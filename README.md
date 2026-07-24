@@ -40,9 +40,18 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 
 ## Documents
 
+### Conventions
+
 | Document | What it covers |
 |---|---|
 | `docs/conventions/analytics-and-ops-logging.md` | Cross-repo convention for audience-separated tracking (product vs. ops/security), database access control, visualization, cadence, and the privacy floor. Instantiated per-repo — see the table inside for which repos have adopted it. |
+
+### Architecture
+
+| Document | What it covers |
+|---|---|
+| `architecture/platform-strategy.md` | Working document — Game App vs. Dashboard App split proposal covering the free game, paid game, and educator/admin experience. Migrated from `number-hive-newvis` 2026-07-24; a stub remains there. |
+| `architecture/page-inventory.md` | Point-in-time snapshot of the paid app's (`number-hive-complete`) full screen inventory, used as supporting evidence for `platform-strategy.md`. Migrated alongside it 2026-07-24; a stub remains in `number-hive-newvis`. Includes an appendix on `number-hive-newvis`'s own CHG-2330 screens. |
 
 ## Status
 

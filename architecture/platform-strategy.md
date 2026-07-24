@@ -208,7 +208,7 @@ The discussion noted that future games (e.g. teaching the *why* behind multiplic
 
 | Question | Status |
 |---|---|
-| Confirm domain structure: `free.numberhive.app`, `play.numberhive.app`, etc. | Under discussion |
+| Confirm domain structure: `free.numberhive.app`, `play.numberhive.app`, etc. | Superseded — see `architecture/subdomain-map.md` (2026-07-24), which records the current view: `www.numberhive.app` (WordPress marketing, live), `game.numberhive.app` (free game, not yet live), `play.numberhive.app` (education app, live), `admin.numberhive.app` (proposed, per ADR-005 in `number-hive-complete`). Still not fully finalised — `.org` references linger in some code/docs. |
 | Monorepo now (Option B) vs evolve gradually (Option A) | Under discussion |
 | When to retire the stub backend in this repo | Depends on backend integration decision |
 | When to begin dashboard app (educator interface) build | Depends on paid game migration timeline |

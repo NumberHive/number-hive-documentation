@@ -19,11 +19,12 @@ If it affects more than one repo, or needs to stay consistent across repos, it b
 
 NumberHive currently includes (and will continue to grow):
 
+- **Marketing site** (`numberhive.app` / `www.numberhive.app`) — WordPress, live today
 - **Educational game** — the learning-focused product experience
 - **Public game** — the public-facing game experience
-- **Administrative facilities** *(upcoming)* — internal/admin tooling for managing the platform
+- **Administrative facilities** *(upcoming)* — internal/admin tooling for managing the platform; proposed as its own service, `number-hive-admin` (see ADR-005 in `number-hive-complete`, referenced from `architecture/subdomain-map.md`)
 
-Each of these is expected to be served from its own subdomain under the NumberHive domain, while sharing underlying data, architecture, and processes. Other supporting and prototype repositories exist alongside these in the [NumberHive GitHub org](https://github.com/NumberHive) — this document will be expanded to map out which are active production services, which are prototypes, and how each one fits into the whole as that picture is confirmed.
+Each of these is expected to be served from its own subdomain under the NumberHive domain, while sharing underlying data, architecture, and processes. Convention (agreed 2026-07-24, see `architecture/subdomain-map.md`): customer-facing properties live on `.app`, NH-internal/staff properties live on `.org`. Other supporting and prototype repositories exist alongside these in the [NumberHive GitHub org](https://github.com/NumberHive) — this document will be expanded to map out which are active production services, which are prototypes, and how each one fits into the whole as that picture is confirmed.
 
 ## What belongs in this repo
 
@@ -37,6 +38,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 
 - Implementation detail specific to a single repo (that stays in that repo's own README/docs)
 - Code — this is a documentation-only repository
+- Decisions scoped to a specific *pair* of repos rather than the whole ecosystem — e.g. `number-hive-complete/docs/adr/001-004` govern the free-game ↔ school-product boundary specifically (database separation, migration safety, offline/CDN strategy) and stay there. ADR-001 was amended 2026-07-24 to record the boundary between "authoritative for this pair" (stays in `number-hive-complete`) and "authoritative for the whole ecosystem" (belongs here).
 
 ## Documents
 
@@ -50,8 +52,9 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 
 | Document | What it covers |
 |---|---|
-| `architecture/platform-strategy.md` | Working document — Game App vs. Dashboard App split proposal covering the free game, paid game, and educator/admin experience. Migrated from `number-hive-newvis` 2026-07-24; a stub remains there. |
+| `architecture/platform-strategy.md` | Working document — Game App vs. Dashboard App split proposal covering the free game, paid game, and educator/admin experience. Migrated from `number-hive-newvis` 2026-07-24; a stub remains there. Domain names in this doc are superseded — see `subdomain-map.md`. |
 | `architecture/page-inventory.md` | Point-in-time snapshot of the paid app's (`number-hive-complete`) full screen inventory, used as supporting evidence for `platform-strategy.md`. Migrated alongside it 2026-07-24; a stub remains in `number-hive-newvis`. Includes an appendix on `number-hive-newvis`'s own CHG-2330 screens. |
+| `architecture/subdomain-map.md` | The authoritative subdomain table (WordPress marketing site, free game, education app, proposed admin split) and the current state of cross-property visitor tracking — what's centralised, what isn't, and what's designed-but-unconfirmed. Synthesised 2026-07-24 from specs across `number-hive-complete` and `number-hive-newvis` that hadn't previously been cross-referenced. |
 
 ## Status
 

@@ -53,13 +53,19 @@ their own instantiation, rather than re-deriving or re-explaining the reasoning 
 | Repo | Product/growth collection | Ops/security collection | Repo-local reference |
 |---|---|---|---|
 | `number-hive-newvis` (public game) | `fg_events` (`free_game` db) | `fg_system_events` (`free_game` db) | `docs/analytics-data-dictionary.md`, `docs/ops-events-dictionary.md`, `docs/analysis-process.md` |
-| `number-hive-complete` (school product) | *not yet documented here* | *not yet documented here* | — |
-| Administrative facilities *(upcoming)* | — | — | — |
+| `number-hive-complete` (school product) | `trackEvents` (`school_hive` db) | *not yet documented here* | `docs/superpowers/specs/2026-05-16-attribution-architecture-design.md`, `docs/superpowers/specs/2026-05-17-main-app-event-tracking-design.md` |
+| WordPress marketing site (`www.numberhive.app`) | *unconfirmed — see `architecture/subdomain-map.md` §3c* | *unconfirmed* | — |
+| Administrative facilities *(upcoming, `admin.numberhive.org`)* | — | — | see `architecture/subdomain-map.md` for the proposed `number-hive-admin` split (ADR-005) |
 
 Add a row here when a repo adopts this pattern. If a repo's implementation needs to diverge from
 the convention above, either resolve the divergence or update this document to record a
 deliberate, agreed exception — don't let repos silently drift apart on data they're jointly
 accountable for.
+
+See `architecture/subdomain-map.md` for the fuller picture of how (and whether) visitor identity
+is actually stitched together across the marketing site, free game, and education app today —
+this table only tracks which repos have adopted the audience-separation pattern, not whether
+their identity spaces are unified.
 
 ## Open cross-repo action items
 

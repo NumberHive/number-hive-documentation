@@ -38,6 +38,12 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 - Implementation detail specific to a single repo (that stays in that repo's own README/docs)
 - Code — this is a documentation-only repository
 
+## Documents
+
+| Document | What it covers |
+|---|---|
+| `docs/conventions/analytics-and-ops-logging.md` | Cross-repo convention for audience-separated tracking (product vs. ops/security), database access control, visualization, cadence, and the privacy floor. Instantiated per-repo — see the table inside for which repos have adopted it. |
+
 ## Status
 
 This repo has just been established as the central documentation store. Content is being built out incrementally — expect this README and the structure around it to expand as architecture and cross-repo processes are captured.

@@ -2,6 +2,10 @@
 
 This repository is the **central knowledge base** for the NumberHive product ecosystem — the single place where architecture, cross-repo processes, and shared conventions are documented so they stay in sync across every repo that makes up NumberHive.
 
+**Start here:** [`architecture/platform-overview.md`](architecture/platform-overview.md) — the
+whole platform in one diagram, why the game/education/admin areas are kept apart, and the
+current state of (and gaps in) tracking a person as they move across surfaces.
+
 ## Why this repo exists
 
 NumberHive is not a single application — it's a **collection of repositories** that together form one product, served across multiple subdomains. As the number of repos grows, so does the risk of architectural knowledge living only in one person's head, or in a Slack thread, or scattered across READMEs that drift out of date with each other.
@@ -52,6 +56,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 
 | Document | What it covers |
 |---|---|
+| `architecture/platform-overview.md` | **Start here.** The whole platform in one diagram (marketing site, free game, education app, admin, Amber), why the three areas are architecturally kept apart, and a dedicated section on cross-surface user tracking — what's built, what's missing, and the proposed shared-cookie fix. |
 | `architecture/system-overview.md` | The whole-ecosystem map — the four areas (school product, free game, company-ops/admin, Amber), who owns what data, and which ADR governs each repo boundary. Migrated from `number-hive-complete/docs/SYSTEM-OVERVIEW.md` 2026-07-25; a stub is expected at the old location once that repo's team applies it. The ADRs it references (001–005) stay in `number-hive-complete` — linked cross-repo, not duplicated. |
 | `architecture/platform-strategy.md` | Working document — Game App vs. Dashboard App split proposal covering the free game, paid game, and educator/admin experience. Migrated from `number-hive-newvis` 2026-07-24; a stub remains there. Domain names in this doc are superseded — see `subdomain-map.md`. |
 | `architecture/page-inventory.md` | Point-in-time snapshot of the paid app's (`number-hive-complete`) full screen inventory, used as supporting evidence for `platform-strategy.md`. Migrated alongside it 2026-07-24; a stub remains in `number-hive-newvis`. Includes an appendix on `number-hive-newvis`'s own CHG-2330 screens. |

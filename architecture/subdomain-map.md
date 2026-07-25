@@ -88,15 +88,21 @@ The user asked: *"other domains for back-end apis?"* Here's what's already decid
 
 **Already agreed, for the free game:** `game-api.numberhive.app`, distinct from the `game.numberhive.app` frontend. ADR-004 (`number-hive-complete`, offline-first-and-CDN) is explicit about why: *"Named `game-api`, not the bare `api`, to keep the naming consistent with the frontend... and to avoid implying this is a shared/ecosystem-wide API — it is this product's backend only."* This is a real architectural point, not just a naming preference: a bare `api.numberhive.app` would look like a shared/central API, which doesn't exist and isn't planned — each product's backend is independently owned (ADR-001, ADR-005 both make this same "one writer per data domain" point in different words).
 
-**Not yet decided — the education app's backend:** `number-hive-complete`'s two `render.yaml` files currently disagree with each other and with the `game-api` convention:
-- `backend/render.yaml` (staging block) sets `server_base_url: https://api-staging.numberhive.app` — bare `api-`, not `play-api-`
-- Root `render.yaml` has only placeholder `*.onrender.com` domains with `# TODO: replace with real custom domain` comments — nothing concrete
-- Neither matches `play.numberhive.org`, the actual current live production URL the user gave — these `render.yaml` files look like a parallel/exploratory Render migration attempt, not a description of what's live today. Worth confirming with whoever owns `number-hive-complete`'s deploy setup whether these files are current or stale.
+**Confirmed live — the education app's backend already has its own origin.** Checked against the actual production infrastructure config (`backend/iac/kubernetes/Pulumi.production.yaml` — Pulumi/Kubernetes, not the `render.yaml` files, is the real live deployment):
 
-**Recommendation** (not yet agreed — flagging for a decision, following the same logic ADR-004 already established for the free game): if/when the education app's backend gets a distinct origin from its frontend, name it **`play-api.numberhive.app`**, mirroring `game-api.numberhive.app`. This:
-- Keeps the naming pattern consistent across every customer-facing product
-- Avoids the same "implies a shared central API" trap ADR-004 already called out
-- Requires reconciling the stray `api-staging.numberhive.app` reference in `backend/render.yaml`
+| | Value |
+|---|---|
+| Frontend (`client_base_url`) | `https://play.numberhive.org` |
+| Backend (`server_base_url` / `domain`) | `https://api.numberhive.org` — bare `api.` prefix, `.org` TLD. Also reachable via a legacy alias `api.hive.mightybyte.us` (MightyByte was the original dev agency/domain name, kept alive alongside the newer one). |
+
+Staging mirrors this: frontend `number-hive-staging.web.app` (Firebase Hosting), backend `api.staging.numberhive.org` (+ legacy `api.staging.hive.mightybyte.us`).
+
+This means there are now **three disagreeing backend-domain conventions on record for this one product**, none of which match each other:
+1. **`api.numberhive.org`** — what's actually live (Pulumi/Kubernetes)
+2. `api-staging.numberhive.app` / `api.numberhive.app` — baked into `backend/render.yaml` and `frontend/env.ts`'s prod fallback respectively; these look like a separate, likely-unused/exploratory Render migration attempt, not what's live
+3. `game-api.numberhive.app`-style naming (`play-api.numberhive.app`) — the pattern ADR-004 already established for the free game, not yet applied here
+
+**Recommendation** (not yet agreed — flagging for a decision): when `play.numberhive.org` migrates to `play.numberhive.app` per the agreed convention, the backend needs an explicit decision too, not just an implicit carry-over. Two options: (a) rename the backend to **`play-api.numberhive.app`**, matching `game-api.numberhive.app` and staying fully on `.app`; or (b) leave the backend on `.org` as `api.numberhive.org` while the frontend moves to `.app` — which would work technically (nothing requires frontend/backend to share a TLD) but breaks the "customer-facing = `.app`" rule as a *rule*, and reintroduces exactly the `.render.yaml`-vs-`env.ts`-vs-live inconsistency already found here. (a) is recommended for consistency; either way this needs the stray `api-staging.numberhive.app` / `api.numberhive.app` references in `render.yaml` and `env.ts` reconciled against whatever is decided.
 
 **For admin, once `number-hive-admin` exists:** following the same logic, **`admin-api.numberhive.org`** if the admin frontend and backend end up on separate origins (unclear yet — ADR-005 doesn't specify this level of detail, only "separate backend service... separate frontend/admin UI build").
 
@@ -125,7 +131,7 @@ None of these currently cross-reference each other. This document is the first p
 ## 6. Open items (not decided — flagging, not deciding, here)
 
 1. **Correct ADR-005 in `number-hive-complete`** — its domain guess (`admin.numberhive.app`) needs updating to `admin.numberhive.org` to match the convention agreed here. Out of scope for this Assistant (different repo/Lead) — needs relaying.
-2. **`play-api.numberhive.app` naming** — not yet agreed, only recommended here by extension of ADR-004's existing logic. `number-hive-complete`'s two `render.yaml` files disagree with each other on backend domain naming and neither matches the live `play.numberhive.org` — needs reconciling by whoever owns that repo's deploy config.
+2. **What happens to the backend domain when `play` migrates to `.app`** — the live backend today is `api.numberhive.org` (confirmed via Pulumi/Kubernetes prod config), not `play-api.numberhive.app`. Renaming to match `game-api.numberhive.app` is recommended but not yet agreed. Either way, `number-hive-complete`'s `render.yaml` files and `frontend/env.ts`'s prod fallback (`api.numberhive.app` / `api-staging.numberhive.app`) disagree with what's actually live and need reconciling by whoever owns that repo's deploy config.
 3. **Does the WordPress site actually track visitors, and does it implement (or could it implement) the shared-cookie or `nh_vid` handoff?** Unknown — someone with WordPress admin access needs to check what's actually installed today.
 4. **The missing "Marketing Site Migration" note** — referenced by `number-hive-newvis`'s tech spec, not found in either repo.
 5. **Whether/when `number-hive-newvis`'s identity space merges into `number-hive-complete`'s** (per `platform-strategy.md`, still "under consideration").

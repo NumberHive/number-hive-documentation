@@ -22,7 +22,7 @@ NumberHive currently includes (and will continue to grow):
 - **Marketing site** (`numberhive.app` / `www.numberhive.app`) — WordPress, live today
 - **Educational game** — the learning-focused product experience
 - **Public game** — the public-facing game experience
-- **Administrative facilities** *(upcoming)* — internal/admin tooling for managing the platform; proposed as its own service, `number-hive-admin` (see ADR-005 in `number-hive-complete`, referenced from `architecture/subdomain-map.md`)
+- **Administrative facilities** *(upcoming)* — internal/admin tooling for managing the platform; proposed as its own service, `number-hive-admin` (see ADR-005 in `number-hive-complete`, referenced from `architecture/subdomain-map.md` and `architecture/system-overview.md`)
 
 Each of these is expected to be served from its own subdomain under the NumberHive domain, while sharing underlying data, architecture, and processes. Convention (agreed 2026-07-24, see `architecture/subdomain-map.md`): customer-facing properties live on `.app`, NH-internal/staff properties live on `.org`. Other supporting and prototype repositories exist alongside these in the [NumberHive GitHub org](https://github.com/NumberHive) — this document will be expanded to map out which are active production services, which are prototypes, and how each one fits into the whole as that picture is confirmed.
 
@@ -52,6 +52,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 
 | Document | What it covers |
 |---|---|
+| `architecture/system-overview.md` | The whole-ecosystem map — the four areas (school product, free game, company-ops/admin, Amber), who owns what data, and which ADR governs each repo boundary. Migrated from `number-hive-complete/docs/SYSTEM-OVERVIEW.md` 2026-07-25; a stub is expected at the old location once that repo's team applies it. The ADRs it references (001–005) stay in `number-hive-complete` — linked cross-repo, not duplicated. |
 | `architecture/platform-strategy.md` | Working document — Game App vs. Dashboard App split proposal covering the free game, paid game, and educator/admin experience. Migrated from `number-hive-newvis` 2026-07-24; a stub remains there. Domain names in this doc are superseded — see `subdomain-map.md`. |
 | `architecture/page-inventory.md` | Point-in-time snapshot of the paid app's (`number-hive-complete`) full screen inventory, used as supporting evidence for `platform-strategy.md`. Migrated alongside it 2026-07-24; a stub remains in `number-hive-newvis`. Includes an appendix on `number-hive-newvis`'s own CHG-2330 screens. |
 | `architecture/subdomain-map.md` | The authoritative subdomain table (WordPress marketing site, free game, education app, proposed admin split) and the current state of cross-property visitor tracking — what's centralised, what isn't, and what's designed-but-unconfirmed. Synthesised 2026-07-24 from specs across `number-hive-complete` and `number-hive-newvis` that hadn't previously been cross-referenced. |

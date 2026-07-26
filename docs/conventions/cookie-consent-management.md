@@ -320,17 +320,37 @@ engineering — flagged as open below, not decided.
    (`logAnalytics()`/`RootNavigator.tsx` never call `getCurrentUtms()`). This is a pre-existing gap
    inside `play` itself, independent of the `game`/`www` work — worth its own fix regardless of
    what happens with cross-surface attribution.
-10. **Should the append-only multi-touch record live on `TrackEvent`** (already has the fields, but
-    is a general-purpose event stream shared with unrelated product analytics — see
-    `docs/conventions/analytics-and-ops-logging.md`'s audience-separation rule) **or a
-    purpose-built `Touchpoint`/`AttributionEvent` collection?** Not decided — flagging for whoever
-    picks this up in `number-hive-complete`.
+10. ~~Should the append-only multi-touch record live on `TrackEvent` or a purpose-built
+    `Touchpoint`/`AttributionEvent` collection?~~ **Resolved 2026-07-26 by the `number-hive-complete`
+    build**, and for a stronger reason than the general-purpose-event-stream one this question
+    originally flagged: `Visitor` carries a **unique** index on `visitorId`, and
+    `attribution.service.ts::getVisitorStats()` runs a `$count` over that collection for
+    unique-visitor totals and conversion-rate reporting. Turning `Visitor` itself into an
+    append-a-row-per-call collection would silently break that stat. Decision: leave `Visitor`'s
+    existing upsert/first-touch behaviour, unique index, `linkVisitor()`, and `stampVisitorUserId()`
+    completely untouched, and add the append-only touch log as a **new, separate collection**. Not
+    `TrackEvent` either, per the original reasoning (mixed audience/retention needs).
 11. **`User.acquisitionUtm*`/`acquisitionAt` are frozen from the single earliest-linked `Visitor`
     and never revisited** once later devices link to the same account (see "Many cookie ids, one
     registered user" above). If the touch log ends up carrying `userId` as recommended, does
     `User.acquisition*` stay as a "first official touch" summary field (fine, if the full history
     lives in the touch log instead), or does it need to become a derived/rollup view itself? Not
     decided — depends on what reporting actually consumes this data.
+12. **Read/query path for the new touch-log collection** — the objective ("query by `visitorId`
+    gives the full multi-touch path") implies *some* query capability is the actual point of
+    building this, not optional follow-up work. Scoped for the initial `number-hive-complete` build:
+    a minimal internal query helper (e.g. "all touches for a `visitorId`/`userId`, ordered by
+    timestamp") ships now; a full GraphQL resolver or admin-facing report view is legitimate
+    follow-up scope, not required day one.
+13. **Retention/TTL for the new touch-log collection** — no TTL exists on `Visitor` or `TrackEvent`
+    today either, so shipping the touch log the same way (no retention policy for now) is consistent
+    with current practice. Revisit if `game`'s (now session-gated, per §6) call volume makes this a
+    storage concern in practice — not expected to be, but not verified either.
+14. **Rate limiting on the now-more-heavily-used cross-origin endpoint** — `POST /api/visitor/identify`
+    is unauthenticated and CORS-wildcarded today with no throttle, and adding `game` as a second
+    caller doesn't change that exposure in kind, only in volume. Decision: document the risk, don't
+    build a throttle as part of this change — matches the endpoint's existing posture. Worth a
+    dedicated hardening pass across *all* the CORS-open endpoints later, not scoped to this change.
 
 ## 5. Recommendation / next steps
 
@@ -363,7 +383,9 @@ own docs, so there's one place either team can check "is this still what the oth
 | Endpoint | Extend the existing `POST /api/visitor/identify` on `play`'s backend (already live, already CORS-wildcarded) — **do not** stand up a new route. Simplest path per §3 "recording centrally." | `play` |
 | New field: `surface` | `'www' \| 'game' \| 'play'`, optional on the request; **defaults to `'play'`** server-side if omitted, so `play`'s own existing frontend calls keep working unchanged during rollout. `game` must send `surface: 'game'` explicitly on every call. | `play` (accept + default), `game` (send) |
 | Identifier | Reuse the `nh_vid` name and UUIDv4 format exactly — do not invent a second field name or id scheme (per §3, open question 1: resolved as reuse). `game` mints this client-side with `crypto.randomUUID()` (already has the identical fallback pattern in `Identity.ts`) if it doesn't already hold one. | `game` |
-| Write behaviour | Change from freeze-on-insert (`$setOnInsert` / "first touch only") to **append-a-touch-row**: every call writes a new touch record (`visitorId`, `surface`, UTM fields, `referrer`, `landingPage`, `country`, timestamp), it does not just update `lastSeenAt`. This is the multi-touch fix from §3 and is `play`-only — `game` doesn't need to know how it's stored internally, only that repeat calls are safe and expected, not deduplicated away. | `play` |
+| Write behaviour | The endpoint appends a touch row on every call instead of freezing on first insert. **Resolved 2026-07-26: this lands in a new, separate collection, not `Visitor` itself** — `Visitor` keeps its existing unique `visitorId` index and upsert/first-touch behaviour untouched, because `attribution.service.ts::getVisitorStats()` depends on that index/behaviour for unique-visitor counts and would break if `Visitor` became append-only (see §4 open question 10). The touch row carries `visitorId`, `surface`, UTM fields, `referrer`, `landingPage`, `country`, timestamp. `game` doesn't need to know the storage details, only that repeat calls are safe and expected, not deduplicated away. | `play` |
+| Read path | A minimal internal query helper (touches by `visitorId`/`userId`, ordered by timestamp) ships as part of this build — a full resolver/admin view is legitimate follow-up scope, not required day one (§4 open question 12). | `play` |
+| Retention / rate limiting | No TTL on the new collection for now (matches `Visitor`/`TrackEvent`'s existing no-TTL posture); no new rate-limit/throttle added to the endpoint for now (matches its existing unauthenticated, CORS-wildcard posture) — both are documented risk notes, not blockers, for this build (§4 open questions 13–14). | `play` |
 | `userId` backfill | Touch rows get `userId` stamped in later, same stamp-if-absent pattern as `Visitor.userId` today (via `stampVisitorUserId()`/`linkVisitor()`), so a `userId`-scoped query rolls up history across devices/surfaces (§3 "Many cookie ids, one registered user"). Nothing for `game` to do here. | `play` |
 | URL-param handoff | Query param name is `nh_vid`, e.g. `https://play.numberhive.app/...?nh_vid=<uuid>`, appended by `game` to any outbound link/CTA pointing at `play`. `play`'s `adoptUrlVisitorId()` already reads this — **no change needed on `play`** for this specific piece. | `game` (send), already done on `play` |
 | Consent gate | `game` must only mint/send the id, call `play`'s endpoint, and append the URL param **after** the visitor has accepted non-essential tracking on `game`'s own consent banner (§2, §3 — child-reachable surface, defaulted off). If declined, `game` sends nothing cross-origin and drops no `nh_vid` param on outbound links (§4 open question 4: accept the attribution loss). | `game` |
@@ -421,3 +443,13 @@ If either side needs to deviate from this table, update it here first — that's
   and §6 itself were all missing from disk despite being referenced in the briefs already sent.
   Reconstructed the full document from the conversation record and committed it, since the two
   builds now in flight depend on it existing and staying put.
+- 2026-07-26 (sixth follow-up) — `number-hive-complete`'s assistant, restating the brief before
+  starting work, independently caught the same doc-mismatch problem (their checkout still showed
+  the pre-reconstruction, one-commit version) and raised it back — confirms the reconstruction/
+  commit above was necessary, not precautionary. They also surfaced a genuinely new finding while
+  reading the code: `Visitor`'s **unique** `visitorId` index feeds `attribution.service.ts`'s
+  `getVisitorStats()` unique-visitor/conversion-rate counts, so the append-only touch log cannot
+  live inside `Visitor` itself without breaking that stat — resolves open question 10 (new,
+  separate collection; `Visitor`'s existing behaviour stays untouched). Confirmed their read-path,
+  retention, and rate-limiting scoping questions and recorded the answers as open questions 12–14
+  and in §6's table, rather than leaving them as undocumented verbal agreements.

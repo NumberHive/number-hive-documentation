@@ -1,0 +1,9 @@
+{
+  "name": "number-hive-documentation",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Centralised documentation, architecture, and brand repository for the NumberHive ecosystem. Docs-only — no build step or runtime.",
+  "scripts": {
+    "test": "echo \"number-hive-documentation is a docs-only repo with no automated test suite — nothing to run.\" && exit 0"
+  }
+}

@@ -351,6 +351,16 @@ engineering — flagged as open below, not decided.
     caller doesn't change that exposure in kind, only in volume. Decision: document the risk, don't
     build a throttle as part of this change — matches the endpoint's existing posture. Worth a
     dedicated hardening pass across *all* the CORS-open endpoints later, not scoped to this change.
+15. **Does `game`'s consent-gating scope cover its own pre-existing `/v1/visitors`/`EventTracker`
+    tracking, or only the new `game`→`play` identity handoff?** Surfaced 2026-07-26 reviewing
+    `number-hive-newvis`'s design: their data flow explicitly carves `/v1/visitors` out as "fires
+    regardless of consent, per non-goals" — but no non-goal establishing that actually exists in
+    this doc or the original brief, and §1 flags `game`'s *entire* current tracking (not just the
+    play-handoff piece) as the live consent gap. Not resolved here — `number-hive-newvis` owes this
+    an explicit classification (necessary/exempt, with a one-line rationale, vs. also-gated) in
+    their spec, not an implicit default. Whichever way it's decided, "the consent banner shipped"
+    and "`game`'s tracking is now consent-compliant" are different claims and shouldn't be
+    conflated.
 
 ## 5. Recommendation / next steps
 
@@ -381,6 +391,7 @@ own docs, so there's one place either team can check "is this still what the oth
 | Element | Value | Who builds it |
 |---|---|---|
 | Endpoint | Extend the existing `POST /api/visitor/identify` on `play`'s backend (already live, already CORS-wildcarded) — **do not** stand up a new route. Simplest path per §3 "recording centrally." | `play` |
+| `play`'s API origin (for `game` to call cross-origin) | **`https://api.numberhive.app`** in production, `https://api-staging.numberhive.app` in staging (confirmed directly in `number-hive-complete/frontend/env.ts` — this is the same `API_URL` `play`'s own frontend calls). **Not** `api.numberhive.org` — that string doesn't appear anywhere in either repo and was an incorrect assumption in an early `number-hive-newvis` design draft, caught 2026-07-26 before it shipped. `game`'s new `playApiUrl.ts` must resolve to an absolute origin (unlike `game`'s own `apiUrl.ts`, which safely falls back to a relative path only because it's same-origin with its own API) — a relative-path fallback here would silently hit `game`'s own domain instead of `play`'s. | `game` |
 | New field: `surface` | `'www' \| 'game' \| 'play'`, optional on the request; **defaults to `'play'`** server-side if omitted, so `play`'s own existing frontend calls keep working unchanged during rollout. `game` must send `surface: 'game'` explicitly on every call. | `play` (accept + default), `game` (send) |
 | Identifier | Reuse the `nh_vid` name and UUIDv4 format exactly — do not invent a second field name or id scheme (per §3, open question 1: resolved as reuse). `game` mints this client-side with `crypto.randomUUID()` (already has the identical fallback pattern in `Identity.ts`) if it doesn't already hold one. | `game` |
 | Write behaviour | The endpoint appends a touch row on every call instead of freezing on first insert. **Resolved 2026-07-26: this lands in a new, separate collection, not `Visitor` itself** — `Visitor` keeps its existing unique `visitorId` index and upsert/first-touch behaviour untouched, because `attribution.service.ts::getVisitorStats()` depends on that index/behaviour for unique-visitor counts and would break if `Visitor` became append-only (see §4 open question 10). The touch row carries `visitorId`, `surface`, UTM fields, `referrer`, `landingPage`, `country`, timestamp. `game` doesn't need to know the storage details, only that repeat calls are safe and expected, not deduplicated away. | `play` |
@@ -453,3 +464,14 @@ If either side needs to deviate from this table, update it here first — that's
   separate collection; `Visitor`'s existing behaviour stays untouched). Confirmed their read-path,
   retention, and rate-limiting scoping questions and recorded the answers as open questions 12–14
   and in §6's table, rather than leaving them as undocumented verbal agreements.
+- 2026-07-26 (seventh follow-up) — Reviewed `number-hive-newvis`'s consolidated design
+  (`ConsentManager`/`ConsentBanner`/`playApiUrl`/`playIdentify`/`EducatorCTA` changes) against the
+  actual repo code before sign-off. Caught a factual error before it reached a spec doc: their
+  proposed `playApiUrl.ts` default (`https://api.numberhive.org`) doesn't exist anywhere in either
+  repo — `play`'s real production API origin, confirmed in `number-hive-complete/frontend/env.ts`,
+  is `https://api.numberhive.app` (staging: `https://api-staging.numberhive.app`). Added this as a
+  row in §6. Also surfaced an unresolved scope question their design had implicitly answered rather
+  than decided: whether `game`'s own pre-existing `/v1/visitors`/`EventTracker` tracking is in scope
+  for consent-gating (per §1's original framing of the whole-surface gap) or only the new
+  `game`→`play` handoff — recorded as open question 15, owed back from `number-hive-newvis` as an
+  explicit classification in their spec, not left as an implicit non-goal.

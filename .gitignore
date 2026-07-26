@@ -1,0 +1,4 @@
+# coder-team harness scaffolding — not repo content
+.claude/
+.ct-uploads/
+.mcp.json

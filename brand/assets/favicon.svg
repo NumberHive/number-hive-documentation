@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Cream rounded-square background. CHG-3594: recoloured from the old
+       dark neutral (#1F1F1F, CHG-2409/CHG-3511 era) to the cream tone
+       (ICON_SURFACE.cream in src/theme/colors.ts) sampled directly from the
+       hand-authored PWA install icons shipped in CHG-3590
+       (public/icons/bee-192.png / bee-512.png), so the browser-tab favicon
+       matches the installed-app icon. -->
+  <rect width="100" height="100" rx="20" ry="20" fill="#F6EEDF"/>
+  <!-- Number Hive brand standalone icon, redrawn in CHG-3594 to match the
+       CHG-3590 hand-authored raster artwork: a simple 4-band stack (orange
+       spout, gray band, orange band, gray band, top-to-bottom) with thin
+       even gaps between bands and no decorative flourish blobs (the
+       flourishes were part of the older CHG-3511 brand-guideline
+       digitisation that CHG-3590 deliberately dropped from the PWA icons).
+       Coordinates are hand-authored to be symmetric about the vertical
+       centreline and were validated by rasterizing them to a 16x16 grid via
+       the same bbox-fit + supersample majority-vote technique documented in
+       scripts/generate-favicon.js, then diffed against that script's
+       PIXELS_16 grid (also updated in CHG-3594) — the two are kept in sync
+       deliberately, since SVG can't import the .mjs/.ts sources directly.
+       Colours reuse the existing ORANGE/GRAY tokens from
+       src/theme/colors.ts. -->
+  <g transform="translate(50 58)">
+    <polygon points="-10.5,-19 10.5,-19 7,-27 -7,-27" fill="#F26D24"/>
+    <polygon points="-20,-17 20,-17 23,-8 -23,-8" fill="#949494"/>
+    <polygon points="-24,-4 24,-4 22,6 -22,6" fill="#FFCF38"/>
+    <polygon points="-22,10 22,10 18,17 -18,17" fill="#595959"/>
+  </g>
+</svg>

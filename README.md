@@ -37,6 +37,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 - **Subdomain map** — which repo serves which subdomain, and how routing/deployment ties them together
 - **Shared conventions** — naming, data formats, auth patterns, or other standards multiple repos need to agree on
 - **Decision records** — why architectural choices were made, so the reasoning isn't lost
+- **Brand guidelines & assets** — the canonical brand guide PDF, logo/favicon assets, brand voice copy, and colour tokens, kept here as source copies (not just links) since there are only a handful of key assets — see `brand/README.md`
 
 ## What does *not* belong here
 
@@ -52,6 +53,12 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 |---|---|
 | `docs/conventions/analytics-and-ops-logging.md` | Cross-repo convention for audience-separated tracking (product vs. ops/security), database access control, visualization, cadence, and the privacy floor. Instantiated per-repo — see the table inside for which repos have adopted it. |
 | `docs/conventions/cookie-consent-management.md` | Draft — cookie/tracking consent requirements across `www` (CookieYes), `game`, and `play`; current focus is a consent-gated shared cookie on `game` to attribute teacher acquisition through to a `play` subscription. |
+
+### Brand
+
+| Document | What it covers |
+|---|---|
+| `brand/README.md` | Canonical home for NumberHive brand guidelines and key assets (guide PDF, logo, favicon, brand voice copy, colour tokens) and the cross-repo brand-consistency picture — what's adopted where, what still drifts. |
 
 ### Architecture
 

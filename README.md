@@ -51,6 +51,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 | Document | What it covers |
 |---|---|
 | `docs/conventions/analytics-and-ops-logging.md` | Cross-repo convention for audience-separated tracking (product vs. ops/security), database access control, visualization, cadence, and the privacy floor. Instantiated per-repo — see the table inside for which repos have adopted it. |
+| `docs/conventions/cookie-consent-management.md` | Draft — cookie/tracking consent requirements across `www` (CookieYes), `game`, and `play`; current focus is a consent-gated shared cookie on `game` to attribute teacher acquisition through to a `play` subscription. |
 
 ### Architecture
 

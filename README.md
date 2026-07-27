@@ -53,6 +53,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 |---|---|
 | `docs/conventions/analytics-and-ops-logging.md` | Cross-repo convention for audience-separated tracking (product vs. ops/security), database access control, visualization, cadence, and the privacy floor. Instantiated per-repo — see the table inside for which repos have adopted it. |
 | `docs/conventions/cookie-consent-management.md` | Draft — cookie/tracking consent requirements across `www` (CookieYes), `game`, and `play`; current focus is a consent-gated shared cookie on `game` to attribute teacher acquisition through to a `play` subscription. |
+| `docs/conventions/cross-repo-data-push.md` | Cross-repo convention for how one repo's data legitimately reaches another (e.g. play/game usage → `number-hive-admin`'s dashboard, admin's entitlement → play) once direct DB access is off the table: push not pull, real-time event lane + batch/reconciliation lane, standard envelope, idempotency, scoped write credentials. Generalises the entitlement-projection pattern from ADR-005. |
 
 ### Brand
 

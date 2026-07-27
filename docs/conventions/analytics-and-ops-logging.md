@@ -67,6 +67,12 @@ is actually stitched together across the marketing site, free game, and educatio
 this table only tracks which repos have adopted the audience-separation pattern, not whether
 their identity spaces are unified.
 
+This convention governs *what* gets tracked and how it's partitioned within a single repo's own
+database. It says nothing about how that data (or any other domain data) should reach a
+*different* repo once there's a legitimate need — e.g. `number-hive-admin` wanting to show
+`fg_events`-derived usage stats. That's a separate, complementary convention — see
+[`cross-repo-data-push.md`](cross-repo-data-push.md).
+
 ## Open cross-repo action items
 
 - **Scoped read-only Atlas users (§3) don't exist yet, in any repo.** This should be set up once,

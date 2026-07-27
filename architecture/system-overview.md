@@ -35,7 +35,10 @@ repo the change actually lands in.
 
 **One writer per data domain.** No service reaches directly into another's database. See
 `number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md` for
-the reasoning and the entitlement event-push mechanism specifically.
+the reasoning and the entitlement event-push mechanism specifically. For the generalised,
+cross-repo shape that mechanism (and its planned siblings — play/game usage data flowing the
+other way into `number-hive-admin`) should follow, see
+[`conventions/cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md).
 
 ---
 

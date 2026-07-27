@@ -151,6 +151,7 @@ This means there are now **three disagreeing backend-domain conventions on recor
 | `docs/architecture.md`, `DEPLOY.md`, `docs/launch-prep.md` | `number-hive-newvis` | Live/DNS status of `game.numberhive.app` / `staging-game.numberhive.app`; confirms WordPress site's existing DNS/CloudFront setup is untouched by other subdomain work |
 | `NumberHive_Free_Game_Product_Tech_Spec.md` (duplicated at repo root **and** under `docs/` — worth flagging to that repo for de-duplication) | `number-hive-newvis` | Free game's separate anonymous identity model; references the missing "Marketing Site Migration" note |
 | `docs/conventions/analytics-and-ops-logging.md` | this repo | Cross-repo rules any unified tracking approach must respect (audience separation, no bespoke query UI, scoped credentials) |
+| `docs/conventions/cross-repo-data-push.md` | this repo | How data actually gets from one repo's DB to another's (e.g. play/game usage → `number-hive-admin`) once direct DB access is off the table — push not pull, real-time + batch/reconciliation lanes, standard envelope |
 
 None of these currently cross-reference each other. This document is the first place that does.
 

@@ -83,7 +83,7 @@ load-bearing architectural decision of the whole platform. The full reasoning li
 - [ADR-004](../../number-hive-complete/docs/adr/004-offline-first-and-cdn.md) — free game's offline-first/CDN deployment model
 - [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) — extracting admin from the education app; how Amber accesses company data; the entitlement event-push mechanism
 
-**One writer per data domain, no shared databases, no direct cross-service DB access anywhere on this diagram.** See [`system-overview.md`](system-overview.md) for the full data-ownership table.
+**One writer per data domain, no shared databases, no direct cross-service DB access anywhere on this diagram.** See [`system-overview.md`](system-overview.md) for the full data-ownership table. For *how* data legitimately moves between repos given that constraint (e.g. usage stats reaching `number-hive-admin`, or admin's entitlement data reaching play) — push, not pull; see [`conventions/cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md).
 
 ---
 
@@ -164,6 +164,7 @@ business" summary, that one is the "what's actually configured" reference.
 | Why are the free game and education app on separate databases? | [ADR-001](../../number-hive-complete/docs/adr/001-free-game-infrastructure.md) |
 | Why is admin being split out, and how will Amber access company data? | [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) |
 | What are the shared rules for analytics/ops logging across repos? | [`conventions/analytics-and-ops-logging.md`](../docs/conventions/analytics-and-ops-logging.md) |
+| How should one repo's data reach another (e.g. usage stats into admin) without direct DB access? | [`conventions/cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md) |
 | What's the original two-frontend split proposal this platform grew out of? | [`platform-strategy.md`](platform-strategy.md) |
 
 ---

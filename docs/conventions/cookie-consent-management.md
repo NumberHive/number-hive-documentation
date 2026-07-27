@@ -7,6 +7,13 @@ and whatever those two changes land is actually implemented yet; this document r
 reference point both builds should be checked against, and should be updated (not treated as
 historical) if either build needs to deviate from §6 while in progress.
 
+**See also:** [`architecture/environment-urls.md`](../../architecture/environment-urls.md) is
+the per-environment URL quick-reference for the whole ecosystem. This document's §6 "shared
+contract" table and its History section (specifically the sixth/seventh/eighth follow-ups) are
+the primary source behind that document's correction of `play`'s production backend domain to
+`https://backend.numberhive.app` — if `play`'s API origin changes again, update it in both
+places, since `environment-urls.md` now cites this document's history directly.
+
 ## Why this lives here, not in one product repo
 
 `www.numberhive.app`, `game.numberhive.app`, and `play.numberhive.app` are three different

@@ -159,6 +159,7 @@ business" summary, that one is the "what's actually configured" reference.
 | Question | Document |
 |---|---|
 | Which repo owns which subdomain, and what's actually live vs. still DNS-unresolved? | [`subdomain-map.md`](subdomain-map.md) |
+| What's the actual URL/port for each surface, per dev/staging/production, cited to source? | [`environment-urls.md`](environment-urls.md) |
 | Which repo owns which data, and how do the pieces relate at a glance? | [`system-overview.md`](system-overview.md) |
 | Why are the free game and education app on separate databases? | [ADR-001](../../number-hive-complete/docs/adr/001-free-game-infrastructure.md) |
 | Why is admin being split out, and how will Amber access company data? | [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) |

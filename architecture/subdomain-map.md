@@ -4,6 +4,24 @@
 by the user 2026-07-24, corroborated by `number-hive-complete`'s ADR-001, which is itself in
 "agreed" status). What remains open is listed in §5.
 
+**See also:** [`environment-urls.md`](environment-urls.md) (2026-07-27) is the per-environment
+(dev/staging/production) quick-reference table cited directly to each repo's live deploy
+config. Building it caught two pieces of drift here:
+1. `game.numberhive.app` / `game-api.numberhive.app` had been marked "to be created" below
+   since this document's 2026-07-24 confirmation pass, but actually went **live** 2026-07-25/26.
+   §1's table has now been corrected to match.
+2. **§4 below is now confirmed wrong on the play backend domain.** §4 treats
+   `backend/iac/kubernetes/Pulumi.production.yaml`'s `api.numberhive.org` as *"what's actually
+   live (Pulumi/Kubernetes)"* — that Kubernetes/Pulumi path is **confirmed abandoned by the user
+   (2026-07-27)**, corroborating what `environment-urls.md`'s research had already turned up (a
+   live Render-dashboard check recorded in `docs/conventions/cookie-consent-management.md`, plus
+   `number-hive-complete`'s own `backend/.env.prod` secrets file and `SHIPPING.md` ship log): the
+   real production backend is **`https://backend.numberhive.app`** on Render. §4's backend-domain
+   table and recommendation are built on the now-confirmed-wrong Pulumi claim and need their own
+   revisit — not done as part of this pass since §4 makes an architectural recommendation, not
+   just a URL correction. See `environment-urls.md` §2 for the full disagreement and citation
+   trail.
+
 **Why this exists:** the user asked (2026-07-24) to record the live domain picture — a WordPress
 marketing site, a public game, and an education area — and to capture the current view on
 cross-property visitor tracking. This document is the "future us remembers" answer, synthesised
@@ -24,8 +42,8 @@ supplied the actual live URLs and the `.app`/`.org` split decision.
 | `staging-local.numberhive.org` | Self-hosted staging environment for the education app (nginx on Diamond → Tailscale → Docker Compose on host **onyx**: frontend, backend, MongoDB, Temporal, PostgreSQL) | `number-hive-complete` | **Live** — replaced the old Render.com staging deployment, which is now fully decommissioned (per `STAGING-LOCAL.md`); tracks the `staging` branch |
 | `staging-game.numberhive.app` | Staging environment for the free game (frontend) | `number-hive-newvis` | **Live** (staging only) |
 | `staging-game-api.numberhive.app` | Staging environment for the free game backend API | `number-hive-newvis` | **Live** (staging only) — pairs with `staging-game.numberhive.app`; defined in `number-hive-newvis`'s `render.yaml`, referenced in `number-hive-complete`'s ADR-004 |
-| `game.numberhive.app` | Public free game (Phaser/Vite PWA) | `number-hive-newvis` | **To be created** — production DNS not yet live |
-| `game-api.numberhive.app` | Free game backend API (Fastify) | `number-hive-newvis` | **To be created** alongside `game.numberhive.app`. Naming already established and agreed in ADR-004/ADR-001 (`game-api`, not bare `api`, to avoid implying a shared/ecosystem-wide API — see §4). |
+| `game.numberhive.app` | Public free game (Phaser/Vite PWA) | `number-hive-newvis` | **Live** — went live 2026-07-25, confirmed + smoke-tested 2026-07-26 (`number-hive-newvis/DEPLOY.md`); superseded the "to be created" status this table previously carried |
+| `game-api.numberhive.app` | Free game backend API (Fastify) | `number-hive-newvis` | **Live** — went live alongside `game.numberhive.app` (2026-07-25/26). Naming established and agreed in ADR-004/ADR-001 (`game-api`, not bare `api`, to avoid implying a shared/ecosystem-wide API — see §4). |
 | `admin.numberhive.org` | `number-hive-admin` — company-ops admin (billing, customer records, staff tooling), split out of `number-hive-complete` | New repo, **not created** | **To be created.** Note: this corrects ADR-005 in `number-hive-complete`, which proposed `admin.numberhive.app` (2026-07-10, before the `.app`/`.org` convention below existed) — see §4. |
 | `amber.numberhive.org` | Amber — NumberHive's AI staff member (persona chat, email/calendar/Drive integration, autonomous task agent) | `amber` | Target deploy domain, per `amber`'s own `docs/deploy.md` (`nginx/DNS (amber.numberhive.org → onyx)` and the Plane-webhook URL example both name it) — that same doc treats the actual nginx/DNS wiring as a separate, out-of-scope ops step, so live status isn't independently confirmed here. Fits the `.org` = staff-internal convention regardless. |
 | `planner.numberhive.org` | Self-hosted Plane instance — issue tracking backing Amber's task-agent scheduler | Not a NumberHive git repo — self-hosted Plane, external infra (like WordPress above) | **Live** — `amber`'s docs reference it as the real, reachable API host in operational curl/troubleshooting commands, not just a design target. |

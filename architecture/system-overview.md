@@ -48,7 +48,9 @@ the reasoning and the entitlement event-push mechanism specifically.
 | Amber vs. `number-hive-admin` | Amber stays a peer API consumer with scoped credentials; not fused into a single "NumberHive OS" | [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) *(in `number-hive-complete`)* |
 
 See also [`subdomain-map.md`](subdomain-map.md) in this repo for how these areas map to actual
-subdomains, and the current state of cross-property visitor tracking.
+subdomains, and the current state of cross-property visitor tracking; and
+[`environment-urls.md`](environment-urls.md) for the actual dev/staging/production URL for each
+area, cited directly to each repo's deploy config.
 
 ---
 

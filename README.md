@@ -69,6 +69,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 | `architecture/platform-strategy.md` | Working document — Game App vs. Dashboard App split proposal covering the free game, paid game, and educator/admin experience. Migrated from `number-hive-newvis` 2026-07-24; a stub remains there. Domain names in this doc are superseded — see `subdomain-map.md`. |
 | `architecture/page-inventory.md` | Point-in-time snapshot of the paid app's (`number-hive-complete`) full screen inventory, used as supporting evidence for `platform-strategy.md`. Migrated alongside it 2026-07-24; a stub remains in `number-hive-newvis`. Includes an appendix on `number-hive-newvis`'s own CHG-2330 screens. |
 | `architecture/subdomain-map.md` | The authoritative subdomain table (WordPress marketing site, free game, education app, proposed admin split) and the current state of cross-property visitor tracking — what's centralised, what isn't, and what's designed-but-unconfirmed. Synthesised 2026-07-24 from specs across `number-hive-complete` and `number-hive-newvis` that hadn't previously been cross-referenced. |
+| `architecture/environment-urls.md` | **Quick-reference table** — every NumberHive URL/port (www, play+backend, game+game-api, admin, Amber) for dev/staging/production, cited directly to each repo's own deploy config. The "what do I actually type in a browser" companion to `subdomain-map.md`'s "why". Compiled 2026-07-27; flags known drift (e.g. `subdomain-map.md`'s game domains now stale — they've since gone live). |
 
 ## Status
 

@@ -363,11 +363,21 @@ engineering — flagged as open below, not decided.
     `number-hive-newvis`'s design: their data flow explicitly carves `/v1/visitors` out as "fires
     regardless of consent, per non-goals" — but no non-goal establishing that actually exists in
     this doc or the original brief, and §1 flags `game`'s *entire* current tracking (not just the
-    play-handoff piece) as the live consent gap. Not resolved here — `number-hive-newvis` owes this
-    an explicit classification (necessary/exempt, with a one-line rationale, vs. also-gated) in
-    their spec, not an implicit default. Whichever way it's decided, "the consent banner shipped"
-    and "`game`'s tracking is now consent-compliant" are different claims and shouldn't be
-    conflated.
+    play-handoff piece) as the live consent gap. **Resolved 2026-07-29 (CHG-3746, security-audit
+    finding SEC-01, Critical):** yes — scope covers `game`'s entire pre-existing tracking, not just
+    the `play` handoff. The CHG-3625 code comment that had re-answered this "no, consent-exempt" on
+    a first-party/same-origin technical basis was wrong: that is not the "beyond strict necessity"
+    legal test §1/§2 of this doc actually applies, and severity was escalated to Critical precisely
+    because this was *confirmed, active* collection in shipped production code (UTM/referrer/device/
+    IP-country data tied to a persistent clientId, from children, on a no-age-gate surface) — not
+    merely an absent gate. `number-hive-newvis` gated `EventTracker.track()` centrally (a single
+    choke point ahead of its internal event queue, covering all ~20+ call sites — nothing is queued,
+    let alone sent, pre-consent) and extracted `POST /v1/visitors` into `registerVisitor.ts`,
+    mirroring the existing `playIdentify.ts` pattern; both now no-op entirely unless
+    `ConsentManager.hasNonEssentialConsent()` is true, identically to the `game`→`play` handoff gate
+    in the "Consent gate" row of §6's table. The narrower "strictly necessary subset + sign-off"
+    alternative was considered and rejected — that path needed compliance sign-off no engineering
+    change could self-grant. See `number-hive-newvis` CHG-3746 for the implementation.
 
 ## 5. Recommendation / next steps
 
@@ -496,3 +506,10 @@ If either side needs to deviate from this table, update it here first — that's
   corrected; this is now the second self-correction on this single fact within this document, worth
   remembering as a caution against treating a code-level fallback/default as equivalent to a
   confirmed deployed value.
+- 2026-07-29 — Open question 15 resolved via `number-hive-newvis` CHG-3746 (security-audit finding
+  SEC-01, escalated to Critical as confirmed-active collection, not an absent gate): `game`'s
+  consent-gating scope covers its entire pre-existing `/v1/visitors`/`EventTracker` tracking, not
+  only the `game`→`play` handoff — both now gated identically, behind
+  `ConsentManager.hasNonEssentialConsent()`. The CHG-3625 "consent-exempt, first-party/same-origin"
+  reasoning that had stood in as an implicit answer is superseded; it was a technical distinction,
+  not the "beyond strict necessity" legal test this doc applies. See §4 item 15.

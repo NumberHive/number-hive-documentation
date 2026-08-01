@@ -33,11 +33,13 @@ flowchart TB
         PlayFE --> PlayAPI --> SchoolDB
     end
 
-    subgraph AdminArea["Company Ops / Admin — admin.numberhive.org (proposed, not yet built)\nnumber-hive-admin"]
-        AdminFE["Admin UI\n(today: bundled inside play's frontend)"]
-        AdminAPI["Admin API\n(today: bundled inside play's backend)"]
-        AdminDB[("Admin DB\nsubscriptions, billing, customers, orgs")]
+    subgraph AdminArea["Company Ops / Admin — admin.numberhive.org (planned; dev today on ripper)\nnumber-hive-admin"]
+        AdminFE["Admin UI\n(billing/CRM screens: still bundled inside play's frontend today)"]
+        AdminAPI["Admin API\n(sign-in/RBAC/audit/entitlement-push: real;\nbilling/CRM: still bundled inside play's backend today)"]
+        AdminDB[("Admin Postgres\nsubscriptions, billing, customers, orgs\n(schema real; billing/CRM data not yet migrated)")]
+        AdminAnalytics[("Admin ClickHouse\nfg_events mirror — MVP0.1, in progress")]
         AdminFE --> AdminAPI --> AdminDB
+        AdminAPI --> AdminAnalytics
     end
 
     subgraph AmberArea["Amber — persona-scoped staff PWA\namber"]
@@ -55,11 +57,17 @@ flowchart TB
 
     WP -. "?nh_vid= URL-param handoff\ndesigned, not confirmed implemented" .-> PlayFE
     GameFE -. "no identity link today\n(isolated clientId/fg_visitors)" .-> PlayFE
+    GameAPI -. "usage events push (batch)\ncross-repo-data-push.md — build started 2026-08-01,\nnewvis sender not yet built" .-> AdminAPI
 ```
 
 Dotted lines are **designed but not confirmed/implemented**. Solid lines are live today.
-`AdminArea` boxes describe the *target* shape from ADR-005 — right now that code and data
-still live physically inside `number-hive-complete`.
+`AdminArea`'s billing/CRM boxes (`AdminFE`, and `AdminDB`'s subscriptions/billing/customers
+data) still describe the *target* shape from ADR-005 — that code and data still live
+physically inside `number-hive-complete`. `AdminAPI`'s sign-in/RBAC/audit-log/
+entitlement-push scaffolding and `AdminAnalytics` (ClickHouse) are real and running in the
+`number-hive-admin` repo as of 2026-08-01 — see `system-overview.md`'s data-ownership table
+and `docs/conventions/cross-repo-data-push.md` for what's actually built vs. still target
+state.
 
 ---
 
@@ -69,8 +77,8 @@ still live physically inside `number-hive-complete`.
 |---|---|---|---|
 | **Traffic profile** | High-volume, spiky, viral by design | Steady, school-hours patterns, paying customers | Low-volume, internal, staff-only |
 | **Data sensitivity** | Anonymous by design — no PII, COPPA / UK Children's Code | Student data — FERPA, GDPR, UK Children's Code **under school consent** | Billing, customer PII, org records |
-| **Repo** | `number-hive-newvis` | `number-hive-complete` | `number-hive-admin` (proposed) |
-| **Database** | `free_game` (separate Atlas DB) | `school_hive` (separate Atlas DB) | Own DB (proposed — currently shares `school_hive`) |
+| **Repo** | `number-hive-newvis` | `number-hive-complete` | `number-hive-admin` (created, in development) |
+| **Database** | `free_game` (separate Atlas DB) | `school_hive` (separate Atlas DB) | Own Postgres (real) + own ClickHouse analytics mirror (new, MVP0.1) — billing/CRM data itself still lives in `school_hive` pending migration |
 | **Why separated** | A viral traffic spike must never degrade the paying school product; different compliance regime entirely | — | A bug/breach in the public site currently shares blast radius with billing/PII because it's the same schema/DB/deploy today |
 
 This three-way split (plus Amber as a fourth, narrower peer) is not incidental — it's the

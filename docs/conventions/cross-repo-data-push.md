@@ -14,10 +14,10 @@ As of 2026-07-27, at least four such flows are designed or being designed, none 
 
 | Flow | Data | Status |
 |---|---|---|
-| `number-hive-admin` → `number-hive-complete` | Entitlement projection (`{orgId, plan, status, seats, validUntil}`) | Designed (ADR-005), not built — `number-hive-admin` doesn't exist yet |
-| `number-hive-complete` → `number-hive-admin` | Play/school usage data, for admin's growing dashboard/analysis arm | Designed 2026-07-27 (this document) |
-| `number-hive-newvis` → `number-hive-admin` | Free-game usage stats (aggregate rollups) | Designed 2026-07-27 (this document) |
-| `number-hive-newvis` → `number-hive-admin` | Free-game feedback submissions, for staff triage | Designed 2026-07-27 (this document) |
+| `number-hive-admin` → `number-hive-complete` | Entitlement projection (`{orgId, plan, status, seats, validUntil}`) | Designed (ADR-005), scaffolding shipped (CHG-3668 on `number-hive-admin`'s board) — not yet receiving real subscription data |
+| `number-hive-complete` → `number-hive-admin` | Play/school usage data, for admin's growing dashboard/analysis arm | Designed 2026-07-27 (this document), not built |
+| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into a ClickHouse analytics store (MVP0.1) | **Build started 2026-08-01.** Receiving side (`number-hive-admin`) in progress — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI). Sending side (`number-hive-newvis` push worker) requested of that repo's Lead same day, not yet built. See "Concrete decisions" below — this flow evolved from "aggregate rollups" (the original 2026-07-27 design) to a raw per-event mirror once the actual use case (browsable event detail, not just rollups) was confirmed. |
+| `number-hive-newvis` → `number-hive-admin` | Free-game feedback submissions, for staff triage | Designed 2026-07-27 (this document), not built |
 
 Left to each pair of repos independently, these four would likely grow four different
 transports, retry behaviours, and payload shapes. This document defines one shared pattern so
@@ -95,15 +95,46 @@ to record a deliberate, agreed exception rather than silently drifting.
 
 ## Open cross-repo action items
 
-- None of the four flows in the table above are built yet. `number-hive-admin` itself doesn't
-  exist yet (ADR-005 is still a proposal) — this document gets the shared pattern agreed *before*
-  any of the four get built independently, precisely to avoid four different answers.
-- Whoever builds `number-hive-admin`'s ingest side should also decide concrete endpoint naming
-  and auth mechanics per flow, and record them in `number-hive-admin`'s own docs, cross-linked
-  back here.
+- Three of the four flows in the table above are still not built. `number-hive-admin` itself
+  now exists and has real code (sign-in, RBAC, audit log, entitlement-push scaffolding) — this
+  document's original framing ("`number-hive-admin` doesn't exist yet") is stale as of
+  2026-08-01; only the billing/subscription data migration itself hasn't started, not the repo.
+- ~~Whoever builds `number-hive-admin`'s ingest side should also decide concrete endpoint
+  naming and auth mechanics per flow, and record them in `number-hive-admin`'s own docs,
+  cross-linked back here.~~ **Done for the usage-events flow (2026-08-01)** — see "Concrete
+  decisions" below. Still open for the other two `→ number-hive-admin` flows (play/school usage,
+  feedback submissions) whenever those get built.
 - The free-game feedback flow's UI precedent inside admin is the existing **Demo Leads** screen
   (`architecture/page-inventory.md` §5.11) — an actionable table sourced from a different public
   surface. Worth reusing that shape rather than designing a new one.
+
+### Concrete decisions — free-game usage events flow (2026-08-01)
+
+The first flow to actually get built. Recorded here per the action item above, cross-linked
+from `number-hive-admin`'s own `server/src/analytics/CONTEXT.md` (added alongside the ingest
+endpoint, CHG-3975):
+
+- **Endpoint:** `POST /api/ingest/events` on `number-hive-admin` (dev:
+  `https://ripper.prawn-mamba.ts.net:20167/api/ingest/events`).
+- **Auth:** `Authorization: Bearer <NEWVIS_EVENTS_PUSH_SECRET>` — a scoped, single-direction
+  credential per §6 above, distinct from the entitlement-push secret.
+- **Transport tier chosen:** batch/rollup lane (§2), not event-push — but note this flow ended
+  up carrying *raw per-event* rows, not aggregates, because the actual driving use case (an
+  admin screen where staff browse individual events) needs event-level detail, not just a
+  rollup number. The "batch, not real-time" half of the §2 distinction still applies (a
+  polling push every ~minute is fine, no LISTEN/NOTIFY needed) — it's the "only the aggregate
+  matters" half that turned out not to hold for this particular flow. Worth remembering when
+  applying §2's two-lane framework to a new flow: cadence and granularity are separate
+  decisions, don't assume batch implies aggregated.
+- **Storage on the receiving side:** ClickHouse (`fg_events` mirror table), not Postgres — a new
+  infra category for `number-hive-admin`, chosen because the source data is a high-volume,
+  insert-only event stream, the same shape ClickHouse is built for. See
+  `architecture/environment-urls.md` §4 for the dev connection details.
+- **Idempotency:** deliberately deferred for MVP0.1 — the receiver does not yet dedupe on
+  `idempotencyKey` despite §5's general requirement. At-least-once delivery with occasional
+  duplicate rows was accepted as a reasonable MVP trade-off for analytics data (unlike
+  billing data, a duplicate event row is low-stakes); flagged as a known gap to close
+  (e.g. via `ReplacingMergeTree`) if it proves to matter in practice, not silently ignored.
 
 ## History
 
@@ -112,3 +143,10 @@ to record a deliberate, agreed exception rather than silently drifting.
   usage data should reach `number-hive-admin`'s growing dashboard/analysis arm, and specifically
   requested a standardised, generalised answer covering both real-time updates and batch
   catch-up/reconciliation.
+- 2026-08-01 — First flow (free-game usage events) moved from designed to build-started: the
+  user asked for an MVP0.1 proof point ("events browsable in admin coming into ClickHouse from
+  the dev public game"), which reshaped the flow from an aggregate rollup into a raw per-event
+  mirror (see "Concrete decisions" above) and introduced ClickHouse as new platform
+  infrastructure. `number-hive-admin`'s ingest/read API and browsing UI were put on that repo's
+  change board (CHG-3975, CHG-3976); the `number-hive-newvis` sending side was requested of that
+  repo's Lead in parallel, not yet built as of this entry.

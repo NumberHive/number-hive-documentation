@@ -122,11 +122,22 @@ time that document is revised.
 | Env | Frontend | Backend | Source |
 |---|---|---|---|
 | Dev — local (`npm run dev`) | `http://localhost:5173` (Vite dev server; `PUBLIC_ORIGIN`) | `http://localhost:5174` (Express `SERVER_PORT` — **internal only**, Vite proxies `/auth/*` and `/api/*` to it so the browser only ever sees one origin) | `.env.example` lines 19–31 |
+| Dev — coder-team preview box (ripper) | `https://ripper.prawn-mamba.ts.net:20167` (dynamic reserved port, coder-team Dev Front) | `/api/*` proxied through the same origin (internal port `20166`) | `dev_server_status` (coder-team), 2026-08-01 |
 | Staging | Not yet built — no staging config exists in this repo yet | — | — |
 | **Production** | `https://admin.numberhive.org` — **planned, not yet live** (`.env.example` comment: *"In prod (once live)"*) | Same origin (single Express app serves built client + API in prod — `npm run build && npm start`) | `.env.example` line 24; `README.md` "Production build & start" section |
 
 This is the newest, least-built-out surface — only local dev is real today; staging and
 production are still target state, not deployed config.
+
+**New (2026-08-01) — dev-only analytics datastore, not a frontend/backend surface so not in
+the table above:** a self-hosted **ClickHouse** container on `ripper`
+(`number-hive-admin/infra/docker-compose.dev.yml`), HTTP interface at `http://localhost:8123`
+(native TCP port deliberately unused — remapped off `9000`, which another service on `ripper`
+already holds). This is `number-hive-admin`'s own analytics event store (MVP0.1, CHG-3975/
+CHG-3976 on that repo's change board) — a mirrored copy of `number-hive-newvis`'s `fg_events`,
+pushed cross-repo per [`cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md).
+Same "own database, not shared" rule as the Postgres instance already documented in that
+repo's README. No staging/production ClickHouse exists yet — dev-only as of this entry.
 
 ---
 

@@ -129,15 +129,23 @@ time that document is revised.
 This is the newest, least-built-out surface — only local dev is real today; staging and
 production are still target state, not deployed config.
 
-**New (2026-08-01) — dev-only analytics datastore, not a frontend/backend surface so not in
-the table above:** a self-hosted **ClickHouse** container on `ripper`
-(`number-hive-admin/infra/docker-compose.dev.yml`), HTTP interface at `http://localhost:8123`
-(native TCP port deliberately unused — remapped off `9000`, which another service on `ripper`
-already holds). This is `number-hive-admin`'s own analytics event store (MVP0.1, CHG-3975/
-CHG-3976 on that repo's change board) — a mirrored copy of `number-hive-newvis`'s `fg_events`,
-pushed cross-repo per [`cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md).
-Same "own database, not shared" rule as the Postgres instance already documented in that
-repo's README. No staging/production ClickHouse exists yet — dev-only as of this entry.
+**Superseded (was here 2026-08-01, corrected 2026-08-02):** this section previously described
+a self-hosted **ClickHouse** container on `ripper` as `number-hive-admin`'s analytics event
+store (MVP0.1, CHG-3975/CHG-3976). That's no longer accurate — CHG-4093 (2026-08-02) migrated
+the events pipeline off ClickHouse onto the same Admin Postgres database, to unblock the
+Render deployment (Render doesn't run a separate ClickHouse container). The ClickHouse dev
+container, `@clickhouse/client` dependency, and all ClickHouse-specific admin tooling were
+removed as part of that change; no historical dev data was carried over (fresh empty table).
+
+**Current state:** events land in an `fg_events` table on `number-hive-admin`'s existing
+Postgres database — same `DATABASE_URL` as the rest of the admin app, so it doesn't get its
+own row in the table above. Dedup is via a `UNIQUE(row_key)` constraint + `ON CONFLICT DO
+NOTHING`, replacing ClickHouse's `ReplacingMergeTree`/`FINAL` approach. Filter/facet/search
+semantics are unchanged from the original design; only the storage engine and query dialect
+changed. This is a mirrored copy of `number-hive-newvis`'s event stream, pushed cross-repo per
+[`cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md). Shipped to
+production 2026-08-02. Postgres has no native TTL the way ClickHouse did, so there's an open
+follow-up idea (CHG-4097, not yet built) to add a 90-day retention purge job for `fg_events`.
 
 ---
 

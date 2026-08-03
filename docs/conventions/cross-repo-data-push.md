@@ -16,7 +16,7 @@ As of 2026-07-27, at least four such flows are designed or being designed, none 
 |---|---|---|
 | `number-hive-admin` → `number-hive-complete` | Entitlement projection (`{orgId, plan, status, seats, validUntil}`) | Designed (ADR-005), scaffolding shipped (CHG-3668 on `number-hive-admin`'s board) — not yet receiving real subscription data |
 | `number-hive-complete` → `number-hive-admin` | Play/school usage data, for admin's growing dashboard/analysis arm | Designed 2026-07-27 (this document), not built |
-| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into a ClickHouse analytics store (MVP0.1) | **Build started 2026-08-01.** Receiving side (`number-hive-admin`) in progress — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI). Sending side (`number-hive-newvis` push worker) requested of that repo's Lead same day, not yet built. See "Concrete decisions" below — this flow evolved from "aggregate rollups" (the original 2026-07-27 design) to a raw per-event mirror once the actual use case (browsable event detail, not just rollups) was confirmed. |
+| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Receiving side shipped to production 2026-08-02** — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI). Storage was originally a dev-only ClickHouse store (MVP0.1); migrated to Postgres by CHG-4093 the same day, to unblock the Render deployment. Sending side (`number-hive-newvis` push worker) requested of that repo's Lead, status not yet confirmed back to this repo. See "Concrete decisions" below — this flow evolved from "aggregate rollups" (the original 2026-07-27 design) to a raw per-event mirror once the actual use case (browsable event detail, not just rollups) was confirmed. |
 | `number-hive-newvis` → `number-hive-admin` | Free-game feedback submissions, for staff triage | Designed 2026-07-27 (this document), not built |
 
 Left to each pair of repos independently, these four would likely grow four different
@@ -126,15 +126,21 @@ endpoint, CHG-3975):
   matters" half that turned out not to hold for this particular flow. Worth remembering when
   applying §2's two-lane framework to a new flow: cadence and granularity are separate
   decisions, don't assume batch implies aggregated.
-- **Storage on the receiving side:** ClickHouse (`fg_events` mirror table), not Postgres — a new
-  infra category for `number-hive-admin`, chosen because the source data is a high-volume,
-  insert-only event stream, the same shape ClickHouse is built for. See
-  `architecture/environment-urls.md` §4 for the dev connection details.
-- **Idempotency:** deliberately deferred for MVP0.1 — the receiver does not yet dedupe on
-  `idempotencyKey` despite §5's general requirement. At-least-once delivery with occasional
-  duplicate rows was accepted as a reasonable MVP trade-off for analytics data (unlike
-  billing data, a duplicate event row is low-stakes); flagged as a known gap to close
-  (e.g. via `ReplacingMergeTree`) if it proves to matter in practice, not silently ignored.
+- **Storage on the receiving side:** initially ClickHouse (`fg_events` mirror table), chosen
+  because the source data is a high-volume, insert-only event stream, the same shape
+  ClickHouse is built for. **Superseded 2026-08-02 (CHG-4093):** migrated onto
+  `number-hive-admin`'s existing Postgres database (same `fg_events` table name, same
+  `DATABASE_URL` as the rest of the app) — Render, the production hosting target, doesn't run
+  a separate ClickHouse container, so the dev-only ClickHouse infra category never made it to
+  production. The ClickHouse dev container, `@clickhouse/client` dependency, and
+  ClickHouse-specific admin tooling were removed entirely; no historical dev data carried
+  over. See `architecture/environment-urls.md` §4 for current connection details.
+- **Idempotency:** originally deferred for MVP0.1 with ClickHouse. Resolved as part of the
+  Postgres migration (CHG-4093) — deduping is now enforced via a `UNIQUE(row_key)` constraint
+  + `ON CONFLICT DO NOTHING` on write, rather than ClickHouse's `ReplacingMergeTree`/`FINAL`
+  read-time dedup. §5's general idempotency requirement is now met for this flow.
+- **Retention:** Postgres has no native TTL the way ClickHouse did. An open follow-up idea
+  (CHG-4097, not yet built) proposes a 90-day retention purge job for `fg_events`.
 
 ## History
 
@@ -150,3 +156,12 @@ endpoint, CHG-3975):
   infrastructure. `number-hive-admin`'s ingest/read API and browsing UI were put on that repo's
   change board (CHG-3975, CHG-3976); the `number-hive-newvis` sending side was requested of that
   repo's Lead in parallel, not yet built as of this entry.
+- 2026-08-02 — CHG-3975 and CHG-3976 shipped to production. Same day, CHG-4093 migrated the
+  entire events pipeline off ClickHouse onto `number-hive-admin`'s existing Postgres database
+  (new `fg_events` table, dedup via `UNIQUE(row_key)` + `ON CONFLICT DO NOTHING`) — done to
+  unblock the Render deployment, which doesn't run a separate ClickHouse container. The
+  ClickHouse dev container, `@clickhouse/client` dependency, and ClickHouse-specific admin
+  tooling were removed. Filter/facet/search semantics are unchanged; only the storage engine
+  changed. No historical dev data carried over (fresh empty table). Open follow-up idea
+  CHG-4097 proposes a 90-day retention purge job for `fg_events`, since Postgres lacks
+  ClickHouse's native TTL. See "Concrete decisions" above for the updated detail.

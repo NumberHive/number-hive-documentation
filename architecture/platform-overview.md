@@ -36,10 +36,8 @@ flowchart TB
     subgraph AdminArea["Company Ops / Admin — admin.numberhive.org (planned; dev today on ripper)\nnumber-hive-admin"]
         AdminFE["Admin UI\n(billing/CRM screens: still bundled inside play's frontend today)"]
         AdminAPI["Admin API\n(sign-in/RBAC/audit/entitlement-push: real;\nbilling/CRM: still bundled inside play's backend today)"]
-        AdminDB[("Admin Postgres\nsubscriptions, billing, customers, orgs\n(schema real; billing/CRM data not yet migrated)")]
-        AdminAnalytics[("Admin ClickHouse\nfg_events mirror — MVP0.1, in progress")]
+        AdminDB[("Admin Postgres\nsubscriptions, billing, customers, orgs\n(schema real; billing/CRM data not yet migrated)\n+ fg_events table — events mirror, live since 2026-08-02")]
         AdminFE --> AdminAPI --> AdminDB
-        AdminAPI --> AdminAnalytics
     end
 
     subgraph AmberArea["Amber — persona-scoped staff PWA\namber"]
@@ -64,10 +62,13 @@ Dotted lines are **designed but not confirmed/implemented**. Solid lines are liv
 `AdminArea`'s billing/CRM boxes (`AdminFE`, and `AdminDB`'s subscriptions/billing/customers
 data) still describe the *target* shape from ADR-005 — that code and data still live
 physically inside `number-hive-complete`. `AdminAPI`'s sign-in/RBAC/audit-log/
-entitlement-push scaffolding and `AdminAnalytics` (ClickHouse) are real and running in the
-`number-hive-admin` repo as of 2026-08-01 — see `system-overview.md`'s data-ownership table
-and `docs/conventions/cross-repo-data-push.md` for what's actually built vs. still target
-state.
+entitlement-push scaffolding is real and running in the `number-hive-admin` repo as of
+2026-08-01. The events mirror shipped to production 2026-08-02 (CHG-3975/CHG-3976) — it was
+built against a dev-only ClickHouse store initially, then migrated onto the same Admin
+Postgres database (`fg_events` table, CHG-4093) before shipping, so it's shown above as part
+of `AdminDB` rather than as a separate analytics store — see `system-overview.md`'s
+data-ownership table and `docs/conventions/cross-repo-data-push.md` for what's actually built
+vs. still target state.
 
 ---
 
@@ -78,7 +79,7 @@ state.
 | **Traffic profile** | High-volume, spiky, viral by design | Steady, school-hours patterns, paying customers | Low-volume, internal, staff-only |
 | **Data sensitivity** | Anonymous by design — no PII, COPPA / UK Children's Code | Student data — FERPA, GDPR, UK Children's Code **under school consent** | Billing, customer PII, org records |
 | **Repo** | `number-hive-newvis` | `number-hive-complete` | `number-hive-admin` (created, in development) |
-| **Database** | `free_game` (separate Atlas DB) | `school_hive` (separate Atlas DB) | Own Postgres (real) + own ClickHouse analytics mirror (new, MVP0.1) — billing/CRM data itself still lives in `school_hive` pending migration |
+| **Database** | `free_game` (separate Atlas DB) | `school_hive` (separate Atlas DB) | Own Postgres (real) — including an `fg_events` events-mirror table, live since 2026-08-02 — billing/CRM data itself still lives in `school_hive` pending migration |
 | **Why separated** | A viral traffic spike must never degrade the paying school product; different compliance regime entirely | — | A bug/breach in the public site currently shares blast radius with billing/PII because it's the same schema/DB/deploy today |
 
 This three-way split (plus Amber as a fourth, narrower peer) is not incidental — it's the

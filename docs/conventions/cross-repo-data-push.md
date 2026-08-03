@@ -16,7 +16,7 @@ As of 2026-07-27, at least four such flows are designed or being designed, none 
 |---|---|---|
 | `number-hive-admin` → `number-hive-complete` | Entitlement projection (`{orgId, plan, status, seats, validUntil}`) | Designed (ADR-005), scaffolding shipped (CHG-3668 on `number-hive-admin`'s board) — not yet receiving real subscription data |
 | `number-hive-complete` → `number-hive-admin` | Play/school usage data, for admin's growing dashboard/analysis arm | Designed 2026-07-27 (this document), not built |
-| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Receiving side shipped to production 2026-08-02** — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI). Storage was originally a dev-only ClickHouse store (MVP0.1); migrated to Postgres by CHG-4093 the same day, to unblock the Render deployment. Sending side (`number-hive-newvis` push worker) requested of that repo's Lead, status not yet confirmed back to this repo. See "Concrete decisions" below — this flow evolved from "aggregate rollups" (the original 2026-07-27 design) to a raw per-event mirror once the actual use case (browsable event detail, not just rollups) was confirmed. |
+| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Both sides built and shipped, end-to-end live traffic not yet confirmed.** Receiving side shipped to production 2026-08-02 — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI); storage was originally a dev-only ClickHouse store (MVP0.1), migrated to Postgres by CHG-4093 the same day. Sending side shipped on `number-hive-newvis`'s side 2026-08-01 — CHG-3977, `eventsPushWorker.js`, deliberately scoped dev-only at spec time (won't push to a staging/production URL until admin has those environments). Nobody has independently confirmed live traffic flowing yet — treat as "built and wired," not "live," until that check happens. See "Concrete decisions" below — this flow also diverges from the "aggregate rollups" shape the rest of this table describes: it's a raw per-event cursor push, an acknowledged exception recorded below. |
 | `number-hive-newvis` → `number-hive-admin` | Free-game feedback submissions, for staff triage | Designed 2026-07-27 (this document), not built |
 
 Left to each pair of repos independently, these four would likely grow four different
@@ -95,10 +95,14 @@ to record a deliberate, agreed exception rather than silently drifting.
 
 ## Open cross-repo action items
 
-- Three of the four flows in the table above are still not built. `number-hive-admin` itself
-  now exists and has real code (sign-in, RBAC, audit log, entitlement-push scaffolding) — this
-  document's original framing ("`number-hive-admin` doesn't exist yet") is stale as of
-  2026-08-01; only the billing/subscription data migration itself hasn't started, not the repo.
+- Two of the four flows in the table above are still not built (play/school usage data, and
+  free-game feedback submissions). The free-game usage-events flow is now built on both ends
+  (2026-08-02 receiving side, 2026-08-01 sending side) but end-to-end live traffic is
+  unconfirmed — see the flow table and "Concrete decisions" above; needs a mutual check with
+  `number-hive-newvis` before calling it live. `number-hive-admin` itself now exists and has
+  real code (sign-in, RBAC, audit log, entitlement-push scaffolding) — this document's original
+  framing ("`number-hive-admin` doesn't exist yet") is stale as of 2026-08-01; only the
+  billing/subscription data migration itself hasn't started, not the repo.
 - ~~Whoever builds `number-hive-admin`'s ingest side should also decide concrete endpoint
   naming and auth mechanics per flow, and record them in `number-hive-admin`'s own docs,
   cross-linked back here.~~ **Done for the usage-events flow (2026-08-01)** — see "Concrete
@@ -141,6 +145,38 @@ endpoint, CHG-3975):
   read-time dedup. §5's general idempotency requirement is now met for this flow.
 - **Retention:** Postgres has no native TTL the way ClickHouse did. An open follow-up idea
   (CHG-4097, not yet built) proposes a 90-day retention purge job for `fg_events`.
+- **Sending side (`number-hive-newvis`):** shipped 2026-08-01, CHG-3977 on that repo's board —
+  `eventsPushWorker.js`. Cursor-based on `_id` (not a time window): batches unsent `fg_events`
+  rows, POSTs to `NEWVIS_EVENTS_PUSH_URL` with `Authorization: Bearer
+  ${NEWVIS_EVENTS_PUSH_SECRET}` using the standard envelope from §4. Default 60s poll interval,
+  200 rows/batch. At-least-once delivery — cursor only advances on a 2xx response; no
+  idempotency-key dedup on the sending side either (matches the receiving side's row-level
+  `UNIQUE(row_key)` dedup instead — belt-and-braces, not a gap). Wired into newvis's real boot
+  path as an opt-in background job. **Deliberately dev-only for now**: the worker silently
+  no-ops every poll unless both `NEWVIS_EVENTS_PUSH_URL` and `NEWVIS_EVENTS_PUSH_SECRET` are
+  set, and newvis's own spec says not to point those at a staging/production URL until
+  `number-hive-admin` actually has those environments (per `environment-urls.md` §4, it
+  doesn't yet). **Not yet independently confirmed as carrying live traffic** — needs a mutual
+  check (newvis's dev env vars populated, or admin's ingest logs showing
+  `sourceRepo: "number-hive-newvis"` batches).
+
+### Agreed exception — raw-row push, not aggregate rollup
+
+Per "What this does not decide" above, a flow that diverges from this document's shape must
+record the exception here rather than silently drift. This flow is that exception:
+
+Both the §2 lane framing and this document's original 2026-07-27 table entry described
+`number-hive-newvis` → `number-hive-admin` usage data as a **batch/rollup** push — periodic
+aggregates, not raw events. What actually got built (and is recorded under "Concrete
+decisions" above) is a **raw per-event cursor push**: every individual `fg_events` row is
+sent, deduped at the row level on both ends, not rolled up at all. This was a deliberate
+decision on both sides once the real driving use case (an admin screen where staff browse
+individual events, not a KPI number) was confirmed — not a silent deviation by either repo.
+Cadence is still batch-shaped (60s polling, not a live push per event), which is why it still
+broadly fits the *transport* half of §2's framing; it's specifically the "aggregate" half of
+"batch/rollup" that doesn't apply here. Any future flow reusing this document's two-lane
+framework should treat cadence and granularity as independently choosable, not assume batch
+implies aggregated — the same lesson already flagged under "Transport tier chosen" above.
 
 ## History
 
@@ -165,3 +201,11 @@ endpoint, CHG-3975):
   changed. No historical dev data carried over (fresh empty table). Open follow-up idea
   CHG-4097 proposes a 90-day retention purge job for `fg_events`, since Postgres lacks
   ClickHouse's native TTL. See "Concrete decisions" above for the updated detail.
+- 2026-08-03 — Sending side confirmed built: `number-hive-newvis` shipped CHG-3977
+  (`eventsPushWorker.js`) on 2026-08-01, relayed via `number-hive-admin`'s Lead. Recorded the
+  raw-row-cursor-vs-aggregate-rollup divergence as a formal agreed exception (see dedicated
+  section above), per this document's own "record a deliberate, agreed exception rather than
+  silently drifting" rule. Both sides of the flow now exist in code, but end-to-end live
+  traffic is **not yet confirmed** — the sending worker is deliberately dev-only until admin
+  has non-dev environments, and no one has checked ingest logs for real batches yet. Do not
+  describe this flow as "live" elsewhere in the docs until that check happens.

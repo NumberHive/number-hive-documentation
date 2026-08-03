@@ -55,7 +55,7 @@ flowchart TB
 
     WP -. "?nh_vid= URL-param handoff\ndesigned, not confirmed implemented" .-> PlayFE
     GameFE -. "no identity link today\n(isolated clientId/fg_visitors)" .-> PlayFE
-    GameAPI -. "usage events push (batch)\ncross-repo-data-push.md — build started 2026-08-01,\nnewvis sender not yet built" .-> AdminAPI
+    GameAPI -. "usage events push (batch)\ncross-repo-data-push.md — both sides built\n(shipped 2026-08-01/02), live traffic unconfirmed" .-> AdminAPI
 ```
 
 Dotted lines are **designed but not confirmed/implemented**. Solid lines are live today.
@@ -69,6 +69,13 @@ Postgres database (`fg_events` table, CHG-4093) before shipping, so it's shown a
 of `AdminDB` rather than as a separate analytics store — see `system-overview.md`'s
 data-ownership table and `docs/conventions/cross-repo-data-push.md` for what's actually built
 vs. still target state.
+
+The `GameAPI -> AdminAPI` edge is a partial exception to the dotted-line rule above: both
+ends of that push are now built and shipped (receiving side 2026-08-02, sending side
+`number-hive-newvis` CHG-3977 2026-08-01) — it's dotted not because it's unimplemented, but
+because no one has yet confirmed live traffic is actually flowing (the sending worker is
+deliberately dev-only until admin has non-dev environments). See
+`docs/conventions/cross-repo-data-push.md`'s flow table for the up-to-date status.
 
 ---
 

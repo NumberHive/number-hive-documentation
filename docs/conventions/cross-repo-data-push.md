@@ -16,7 +16,7 @@ As of 2026-07-27, at least four such flows are designed or being designed, none 
 |---|---|---|
 | `number-hive-admin` → `number-hive-complete` | Entitlement projection (`{orgId, plan, status, seats, validUntil}`) | Designed (ADR-005), scaffolding shipped (CHG-3668 on `number-hive-admin`'s board) — not yet receiving real subscription data |
 | `number-hive-complete` → `number-hive-admin` | Play/school usage data, for admin's growing dashboard/analysis arm | Designed 2026-07-27 (this document), not built |
-| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Confirmed live end-to-end on dev, 2026-08-03 — production still pending admin's non-dev environments.** Receiving side shipped to production 2026-08-02T19:08:19 — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI); storage was originally a dev-only ClickHouse store (MVP0.1), migrated to Postgres by CHG-4093 the same day. Sending side — CHG-3977, `eventsPushWorker.js` — deployed to production 2026-08-01 07:43, correctly dev-scoped. A smoke test on 2026-08-03 proved the full chain (`fg_events` insert → worker poll → POST → 2xx → cursor advance) works: a marked test event was delivered and the push-worker's cursor doc advanced accordingly, ~65s later, matching the 60s poll interval. Awaiting admin's independent log cross-check for full two-sided corroboration. Not yet running against staging/production — both sides remain dev-only until admin has those environments. See "Concrete decisions" below — this flow also diverges from the "aggregate rollups" shape the rest of this table describes: it's a raw per-event cursor push, an acknowledged exception recorded below. |
+| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Confirmed live end-to-end on dev, 2026-08-03 — production still pending admin's non-dev environments.** Receiving side shipped to production 2026-08-02T19:08:19 — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI); storage was originally a dev-only ClickHouse store (MVP0.1), migrated to Postgres by CHG-4093 the same day. Sending side — CHG-3977, `eventsPushWorker.js` — deployed to production 2026-08-01 07:43, correctly dev-scoped. A smoke test on 2026-08-03 proved the full chain (`fg_events` insert → worker poll → POST → 2xx → cursor advance) works: a marked test event was delivered and the push-worker's cursor doc advanced accordingly, ~65s later, matching the 60s poll interval — independently corroborated from admin's side too (their `fg_events` row's `ingested_at` matches newvis's cursor-advance timestamp to within 12ms). Not yet running against staging/production — both sides remain dev-only until admin has those environments. See "Concrete decisions" below — this flow also diverges from the "aggregate rollups" shape the rest of this table describes: it's a raw per-event cursor push, an acknowledged exception recorded below. |
 | `number-hive-newvis` → `number-hive-admin` | Free-game feedback submissions, for staff triage | Designed 2026-07-27 (this document), not built |
 
 Left to each pair of repos independently, these four would likely grow four different
@@ -186,10 +186,15 @@ endpoint, CHG-3975):
     (verified in the worker's code), so this is a genuine confirmed delivery, not just an
     attempted send. **The full chain — `fg_events` insert → worker poll → POST to admin's dev
     endpoint → 2xx → cursor advance — is confirmed working, on the dev box, as of 2026-08-03.**
-    Documentation Lead asked `number-hive-admin`'s Lead to independently cross-check their
-    ingest logs around `2026-08-03T18:36:08Z` for the same `sourceRepo: "number-hive-newvis"` /
-    `smoke.test.cross_repo_push` batch, for corroboration from the receiving side; pending
-    reply, will be recorded once confirmed.
+  - **Independently corroborated from the receiving side, same day.** `number-hive-admin`'s
+    Lead queried their Postgres `fg_events` table directly and found the row:
+    `client_id: smoke-test-client-cross-repo-push`, `event_name: smoke.test.cross_repo_push`,
+    `source_repo: number-hive-newvis`, `ingested_at: 2026-08-03T18:36:08.875Z` — matching
+    newvis's cursor-advance timestamp (`18:36:08.887Z`) to within 12ms, and an
+    `idempotency_key` embedding the same Mongo `_id` twice, exactly as designed. This is a
+    fully two-sided confirmation (sending-side cursor advance + receiving-side row, matched to
+    the millisecond) — as solid as this kind of check gets without production traffic. Row is
+    safe to delete/ignore; both Leads treated it as confirmed and closed.
   - **Scope note — this confirms dev, not staging/production.** Env vars remain deliberately
     unset outside the dev box (per CHG-3977's scope, and because `number-hive-admin` doesn't
     have staging/production environments of its own yet — see `environment-urls.md` §4). Don't
@@ -283,8 +288,8 @@ implies aggregated — the same lesson already flagged under "Transport tier cho
   server, seed a real event, watch for a cursor doc / a 2xx in admin's ingest logs tagged
   `sourceRepo: "number-hive-newvis"`) — outcome pending, will be recorded here once reported
   back. See "Concrete decisions" above for full detail.
-- 2026-08-03 (final update) — Newvis's Lead ran the smoke test and reported back: the flow is
-  **confirmed live end-to-end on the dev box**. The cursor doc already showed an earlier
+- 2026-08-03 (smoke test result) — Newvis's Lead ran the smoke test and reported back: the flow
+  is **confirmed live end-to-end on the dev box**. The cursor doc already showed an earlier
   successful push that same day (`lastPushedAt: 2026-08-03T15:04:49Z`, not triggered by this
   test), and a fresh marked smoke-test event (`smoke.test.cross_repo_push`) was inserted,
   picked up by the next poll, POSTed to admin's dev ingest endpoint, and confirmed delivered —
@@ -296,3 +301,18 @@ implies aggregated — the same lesson already flagged under "Transport tier cho
   reply. Scope reminder: this confirms the **dev** environment only — the flow remains
   deliberately unconfigured for staging/production until `number-hive-admin` has those
   environments (`environment-urls.md` §4). See "Concrete decisions" above for the full trace.
+- 2026-08-03 (fully closed out) — `number-hive-admin`'s Lead independently corroborated the
+  smoke test by querying Postgres directly: the `fg_events` row's `ingested_at`
+  (`2026-08-03T18:36:08.875Z`) matches newvis's cursor-advance timestamp to within 12ms, and
+  its `idempotency_key` embeds the same Mongo `_id` twice as designed — a clean, two-sided,
+  millisecond-matched confirmation. Flow status is now genuinely "confirmed live (dev)," not
+  provisional. Two unrelated but useful corrections/cautions surfaced in the same reply,
+  recorded in their respective homes: (1) the old dev-only ClickHouse container on `ripper`
+  was **not actually decommissioned** when CHG-4093 migrated the app off it — only the app-level
+  dependency/tooling was removed; the container itself is still running, just stale (see
+  `environment-urls.md` §4 for the correction); (2) `number-hive-admin`'s dev server has been
+  **flapping** (health-check failures) since ~18:30 on 2026-08-03, after an unrelated backend
+  change — didn't affect this smoke test (landed cleanly at 18:36:08, before the flapping
+  started) and production is unaffected, but hold off further high-volume dev-environment
+  testing (from either repo) until that's confirmed stable. Smoke-test row is safe to
+  delete/ignore; both Leads treated this as closed.

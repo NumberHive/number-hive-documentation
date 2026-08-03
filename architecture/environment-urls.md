@@ -133,9 +133,17 @@ production are still target state, not deployed config.
 a self-hosted **ClickHouse** container on `ripper` as `number-hive-admin`'s analytics event
 store (MVP0.1, CHG-3975/CHG-3976). That's no longer accurate — CHG-4093 (2026-08-02) migrated
 the events pipeline off ClickHouse onto the same Admin Postgres database, to unblock the
-Render deployment (Render doesn't run a separate ClickHouse container). The ClickHouse dev
-container, `@clickhouse/client` dependency, and all ClickHouse-specific admin tooling were
-removed as part of that change; no historical dev data was carried over (fresh empty table).
+Render deployment (Render doesn't run a separate ClickHouse container). The `@clickhouse/client`
+app dependency and all ClickHouse-specific admin tooling/code were removed as part of that
+change; no historical dev data was carried over into Postgres (fresh empty table).
+
+**Correction (2026-08-03):** the ClickHouse *container itself* was **not** torn down — it's
+still running on `ripper`, just stale and unused. `number-hive-admin`'s Lead confirmed its most
+recent row dates from 2026-08-01, pre-migration, and independently checked that a 2026-08-03
+smoke-test event landed only in Postgres, not ClickHouse. Flagging so nobody mistakes "app code
+removed" for "infrastructure decommissioned," and so no future integration gets accidentally
+pointed at the stale container. Decommissioning the container itself is an open follow-up, not
+yet tracked as a change.
 
 **Current state:** events land in an `fg_events` table on `number-hive-admin`'s existing
 Postgres database — same `DATABASE_URL` as the rest of the admin app, so it doesn't get its

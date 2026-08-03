@@ -16,7 +16,7 @@ As of 2026-07-27, at least four such flows are designed or being designed, none 
 |---|---|---|
 | `number-hive-admin` → `number-hive-complete` | Entitlement projection (`{orgId, plan, status, seats, validUntil}`) | Designed (ADR-005), scaffolding shipped (CHG-3668 on `number-hive-admin`'s board) — not yet receiving real subscription data |
 | `number-hive-complete` → `number-hive-admin` | Play/school usage data, for admin's growing dashboard/analysis arm | Designed 2026-07-27 (this document), not built |
-| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Both sides built and shipped, end-to-end live traffic not yet confirmed.** Receiving side shipped to production 2026-08-02 — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI); storage was originally a dev-only ClickHouse store (MVP0.1), migrated to Postgres by CHG-4093 the same day. Sending side shipped on `number-hive-newvis`'s side 2026-08-01 — CHG-3977, `eventsPushWorker.js`, deliberately scoped dev-only at spec time (won't push to a staging/production URL until admin has those environments). Nobody has independently confirmed live traffic flowing yet — treat as "built and wired," not "live," until that check happens. See "Concrete decisions" below — this flow also diverges from the "aggregate rollups" shape the rest of this table describes: it's a raw per-event cursor push, an acknowledged exception recorded below. |
+| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Receiving side built, shipped, and independently validated live; sending side's status is second-hand and being re-confirmed.** Receiving side shipped to production 2026-08-02T19:08:19 — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI); storage was originally a dev-only ClickHouse store (MVP0.1), migrated to Postgres by CHG-4093 the same day; admin's Lead confirms CHG-3975's endpoint has been live and exercised (manual/synthetic `POST`s) since 2026-08-01. Sending side reported as shipped on `number-hive-newvis`'s side 2026-08-01 — CHG-3977, `eventsPushWorker.js` — but that claim was only ever relayed via admin's Lead, who has since clarified they have no direct visibility into newvis's build/deploy status; documentation Lead has messaged newvis's Lead directly (2026-08-03) for firsthand confirmation, pending reply. Treat as "built and wired," not "live," until that lands. See "Concrete decisions" below — this flow also diverges from the "aggregate rollups" shape the rest of this table describes: it's a raw per-event cursor push, an acknowledged exception recorded below. |
 | `number-hive-newvis` → `number-hive-admin` | Free-game feedback submissions, for staff triage | Designed 2026-07-27 (this document), not built |
 
 Left to each pair of repos independently, these four would likely grow four different
@@ -145,6 +145,12 @@ endpoint, CHG-3975):
   read-time dedup. §5's general idempotency requirement is now met for this flow.
 - **Retention:** Postgres has no native TTL the way ClickHouse did. An open follow-up idea
   (CHG-4097, not yet built) proposes a 90-day retention purge job for `fg_events`.
+- **Receiving side independently validated (`number-hive-admin`):** confirmed 2026-08-03 by
+  `number-hive-admin`'s Lead — the CHG-3975 ingest endpoint has been live and exercised since
+  2026-08-01, initially via manual/synthetic `POST`s per CHG-3976's own acceptance criteria (UI
+  validation wasn't blocked on the push worker existing). So the receiving side is verified
+  working on its own merits, independent of whether real newvis traffic has reached it yet —
+  it's "ready and waiting," not just "deployed and unverified."
 - **Sending side (`number-hive-newvis`):** shipped 2026-08-01, CHG-3977 on that repo's board —
   `eventsPushWorker.js`. Cursor-based on `_id` (not a time window): batches unsent `fg_events`
   rows, POSTs to `NEWVIS_EVENTS_PUSH_URL` with `Authorization: Bearer
@@ -158,7 +164,23 @@ endpoint, CHG-3975):
   `number-hive-admin` actually has those environments (per `environment-urls.md` §4, it
   doesn't yet). **Not yet independently confirmed as carrying live traffic** — needs a mutual
   check (newvis's dev env vars populated, or admin's ingest logs showing
-  `sourceRepo: "number-hive-newvis"` batches).
+  `sourceRepo: "number-hive-newvis"` batches). Important sourcing caveat as of 2026-08-03:
+  `number-hive-admin`'s Lead has clarified this build-status claim was always a *relay*, not a
+  firsthand confirmation — that repo has no visibility into `number-hive-newvis`'s own board or
+  deploys. This document's own documentation Lead has now messaged `number-hive-newvis`'s Lead
+  directly (2026-08-03) to get independent, firsthand confirmation of deploy status and any
+  observed real traffic; update this entry once that reply lands, and don't treat the
+  2026-08-01 "shipped" claim as fully verified until then.
+- **`EventsPage.tsx` has moved on since CHG-3976's original spec.** Two later
+  `number-hive-admin` changes touched the same file: CHG-4069 (event search over `fg_events`)
+  and CHG-4093 (the ClickHouse→Postgres storage migration above) — the change-tracking system
+  logged partial rollback/overwrite warnings at merge time (165 and 19 lines respectively)
+  because both modified a file CHG-3976 had already shipped. Per `number-hive-admin`'s Lead,
+  this is expected iterative evolution, not data loss. Practical implication for anyone
+  documenting "current" `EventsPage.tsx` behaviour: treat CHG-3976 (eventName/date-range
+  filters, pagination) as the *original* shape, not the current one — CHG-4069 and CHG-4071
+  (URL-synced filter state, still landing as of 2026-08-03) extend it further and are the more
+  current reference for what the page actually does today.
 
 ### Agreed exception — raw-row push, not aggregate rollup
 
@@ -209,3 +231,18 @@ implies aggregated — the same lesson already flagged under "Transport tier cho
   traffic is **not yet confirmed** — the sending worker is deliberately dev-only until admin
   has non-dev environments, and no one has checked ingest logs for real batches yet. Do not
   describe this flow as "live" elsewhere in the docs until that check happens.
+- 2026-08-03 (later same day) — Follow-up from `number-hive-admin`'s Lead, prompted by the
+  user prioritising `number-hive-newvis` activity visibility ahead of its friends-and-family
+  launch: (1) confirmed exact production-ship timestamps for CHG-3975/CHG-3976
+  (2026-08-02T19:08:19); (2) confirmed the CHG-3975 ingest endpoint has been independently
+  validated live since 2026-08-01 via manual/synthetic `POST`s, so the receiving side is
+  verified "ready and waiting" regardless of newvis's push-worker status (see "Concrete
+  decisions" above); (3) flagged that `EventsPage.tsx` has been extended past CHG-3976's
+  original spec by CHG-4069/CHG-4093 (partial-overwrite merge warnings — expected, not data
+  loss) and is still being extended by CHG-4069/CHG-4071 (URL-synced filter state); (4)
+  **importantly, clarified that the earlier "CHG-3977 shipped 2026-08-01" claim was always a
+  relay, not a firsthand confirmation** — `number-hive-admin` has no visibility into
+  `number-hive-newvis`'s board or deploys and recommended asking that repo's Lead directly.
+  Documentation Lead has messaged `number-hive-newvis`'s Lead directly for independent
+  confirmation of deploy status and observed live traffic; pending reply as of this entry —
+  see "Concrete decisions" above for the exact caveat, and update this history once resolved.

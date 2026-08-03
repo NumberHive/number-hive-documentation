@@ -55,7 +55,7 @@ flowchart TB
 
     WP -. "?nh_vid= URL-param handoff\ndesigned, not confirmed implemented" .-> PlayFE
     GameFE -. "no identity link today\n(isolated clientId/fg_visitors)" .-> PlayFE
-    GameAPI -. "usage events push (batch)\ncross-repo-data-push.md — both sides built\n(shipped 2026-08-01/02), live traffic unconfirmed" .-> AdminAPI
+    GameAPI -. "usage events push (batch)\ncross-repo-data-push.md — confirmed live on dev\n2026-08-03; prod pending admin's non-dev envs" .-> AdminAPI
 ```
 
 Dotted lines are **designed but not confirmed/implemented**. Solid lines are live today.
@@ -71,10 +71,13 @@ data-ownership table and `docs/conventions/cross-repo-data-push.md` for what's a
 vs. still target state.
 
 The `GameAPI -> AdminAPI` edge is a partial exception to the dotted-line rule above: both
-ends of that push are now built and shipped (receiving side 2026-08-02, sending side
-`number-hive-newvis` CHG-3977 2026-08-01) — it's dotted not because it's unimplemented, but
-because no one has yet confirmed live traffic is actually flowing (the sending worker is
-deliberately dev-only until admin has non-dev environments). See
+ends of that push are built and shipped (receiving side 2026-08-02, sending side
+`number-hive-newvis` CHG-3977 2026-08-01), and as of 2026-08-03 a smoke test confirmed the
+full mechanism actually works end-to-end (event insert → worker poll → push → 2xx → cursor
+advance, verified via a marked test event). It's still shown dotted not because it's
+unimplemented or unproven, but because it's confirmed on the **dev** environment only — the
+sending worker is deliberately kept dev-only until `number-hive-admin` has staging/production
+environments of its own, so there's no continuously-live production path yet. See
 `docs/conventions/cross-repo-data-push.md`'s flow table for the up-to-date status.
 
 ---

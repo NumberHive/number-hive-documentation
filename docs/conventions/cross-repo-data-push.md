@@ -16,7 +16,7 @@ As of 2026-07-27, at least four such flows are designed or being designed, none 
 |---|---|---|
 | `number-hive-admin` → `number-hive-complete` | Entitlement projection (`{orgId, plan, status, seats, validUntil}`) | Designed (ADR-005), scaffolding shipped (CHG-3668 on `number-hive-admin`'s board) — not yet receiving real subscription data |
 | `number-hive-complete` → `number-hive-admin` | Play/school usage data, for admin's growing dashboard/analysis arm | Designed 2026-07-27 (this document), not built |
-| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Receiving side built, shipped, and independently validated live; sending side's status is second-hand and being re-confirmed.** Receiving side shipped to production 2026-08-02T19:08:19 — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI); storage was originally a dev-only ClickHouse store (MVP0.1), migrated to Postgres by CHG-4093 the same day; admin's Lead confirms CHG-3975's endpoint has been live and exercised (manual/synthetic `POST`s) since 2026-08-01. Sending side reported as shipped on `number-hive-newvis`'s side 2026-08-01 — CHG-3977, `eventsPushWorker.js` — but that claim was only ever relayed via admin's Lead, who has since clarified they have no direct visibility into newvis's build/deploy status; documentation Lead has messaged newvis's Lead directly (2026-08-03) for firsthand confirmation, pending reply. Treat as "built and wired," not "live," until that lands. See "Concrete decisions" below — this flow also diverges from the "aggregate rollups" shape the rest of this table describes: it's a raw per-event cursor push, an acknowledged exception recorded below. |
+| `number-hive-newvis` → `number-hive-admin` | Free-game usage events, mirrored into an `fg_events` table on admin's Postgres DB | **Both sides independently confirmed built and correctly configured; no real traffic confirmed yet.** Receiving side shipped to production 2026-08-02T19:08:19 — CHG-3975 (ingest+read API) and CHG-3976 (browsing UI); storage was originally a dev-only ClickHouse store (MVP0.1), migrated to Postgres by CHG-4093 the same day; admin's Lead confirms CHG-3975's endpoint has been live and exercised (manual/synthetic `POST`s) since 2026-08-01. Sending side — CHG-3977, `eventsPushWorker.js` — firsthand-confirmed by newvis's own Lead (2026-08-03) as deployed to production 2026-08-01 07:43 and correctly dev-scoped, but its dev box shows zero `fg_events` rows and no push cursor doc, i.e. it's never actually run/pushed yet. Newvis's Lead is now running a smoke test (dev-server start + seeded event) to close this out before their friends-and-family launch. Treat as "built and wired," not "live," until that smoke test confirms a real batch. See "Concrete decisions" below — this flow also diverges from the "aggregate rollups" shape the rest of this table describes: it's a raw per-event cursor push, an acknowledged exception recorded below. |
 | `number-hive-newvis` → `number-hive-admin` | Free-game feedback submissions, for staff triage | Designed 2026-07-27 (this document), not built |
 
 Left to each pair of repos independently, these four would likely grow four different
@@ -151,26 +151,38 @@ endpoint, CHG-3975):
   validation wasn't blocked on the push worker existing). So the receiving side is verified
   working on its own merits, independent of whether real newvis traffic has reached it yet —
   it's "ready and waiting," not just "deployed and unverified."
-- **Sending side (`number-hive-newvis`):** shipped 2026-08-01, CHG-3977 on that repo's board —
-  `eventsPushWorker.js`. Cursor-based on `_id` (not a time window): batches unsent `fg_events`
-  rows, POSTs to `NEWVIS_EVENTS_PUSH_URL` with `Authorization: Bearer
-  ${NEWVIS_EVENTS_PUSH_SECRET}` using the standard envelope from §4. Default 60s poll interval,
-  200 rows/batch. At-least-once delivery — cursor only advances on a 2xx response; no
-  idempotency-key dedup on the sending side either (matches the receiving side's row-level
-  `UNIQUE(row_key)` dedup instead — belt-and-braces, not a gap). Wired into newvis's real boot
-  path as an opt-in background job. **Deliberately dev-only for now**: the worker silently
-  no-ops every poll unless both `NEWVIS_EVENTS_PUSH_URL` and `NEWVIS_EVENTS_PUSH_SECRET` are
-  set, and newvis's own spec says not to point those at a staging/production URL until
-  `number-hive-admin` actually has those environments (per `environment-urls.md` §4, it
-  doesn't yet). **Not yet independently confirmed as carrying live traffic** — needs a mutual
-  check (newvis's dev env vars populated, or admin's ingest logs showing
-  `sourceRepo: "number-hive-newvis"` batches). Important sourcing caveat as of 2026-08-03:
-  `number-hive-admin`'s Lead has clarified this build-status claim was always a *relay*, not a
-  firsthand confirmation — that repo has no visibility into `number-hive-newvis`'s own board or
-  deploys. This document's own documentation Lead has now messaged `number-hive-newvis`'s Lead
-  directly (2026-08-03) to get independent, firsthand confirmation of deploy status and any
-  observed real traffic; update this entry once that reply lands, and don't treat the
-  2026-08-01 "shipped" claim as fully verified until then.
+- **Sending side (`number-hive-newvis`) — firsthand confirmation, 2026-08-03.** Directly
+  verified by `number-hive-newvis`'s own Lead against their repo, change board, and dev box
+  (superseding the earlier secondhand relay via `number-hive-admin`'s Lead, noted above as
+  unverified — now resolved):
+  - **Deployed, not just merged.** CHG-3977 integrated to `develop` 2026-08-01 02:05, promoted
+    to staging 07:35, promoted to production 07:43. `eventsPushWorker.js` lives in
+    `backend/src/lib/`, wired into `server.js`/`index.js` as designed.
+  - **Design as documented:** cursor-based on `fg_events` `_id` (not a time window), POSTs to
+    `NEWVIS_EVENTS_PUSH_URL` with `Authorization: Bearer ${NEWVIS_EVENTS_PUSH_SECRET}` using the
+    standard envelope from §4, 60s poll interval, 200 rows/batch, at-least-once delivery (cursor
+    only advances on a 2xx). No idempotency-key dedup on the sending side — relies on the
+    receiving side's `UNIQUE(row_key)` dedup instead, confirmed as intentional
+    belt-and-braces, not a gap.
+  - **Env vars are set, but only on the dev box** (`nhvis.puddicombe.com`, the coder-team box's
+    port 20056 — per that repo's `DEPLOY.md`, "dev" there means whatever's running on that box,
+    not a persistent Render/Docker environment). `NEWVIS_EVENTS_PUSH_URL` matches admin's
+    CHG-3975 dev endpoint (`https://ripper.prawn-mamba.ts.net:20167/api/ingest/events`)
+    exactly; `NEWVIS_EVENTS_PUSH_SECRET` is set (non-empty). Correctly **not** set in
+    staging/production, matching CHG-3977's scoped-dev-only design — no risk of an accidental
+    prod push.
+  - **Not confirmed flowing.** Two independent checks on the dev box found no evidence of any
+    real batch ever having gone out: `free_game`'s `fg_events` collection has 0 documents, and
+    there is no `fg_events_push_state` cursor document at all (the worker has never had
+    anything to push, or has never actually run). The dev server process itself is currently
+    **stopped** (configured, not running), so nothing is polling right now either.
+  - **Verdict from newvis's Lead: "wired, unverified," not "confirmed live."** To get a real
+    batch through before the friends-and-family launch, someone needs to (a) start the dev
+    server, (b) generate or seed at least one real `fg_events` row, and (c) watch for the
+    cursor doc to appear / check admin's ingest logs for a 2xx tagged
+    `sourceRepo: "number-hive-newvis"`. Offered by newvis's Lead and accepted 2026-08-03 — they
+    are proceeding to run the smoke test on their dev box; see History below for the outcome
+    once it's reported back.
 - **`EventsPage.tsx` has moved on since CHG-3976's original spec.** Two later
   `number-hive-admin` changes touched the same file: CHG-4069 (event search over `fg_events`)
   and CHG-4093 (the ClickHouse→Postgres storage migration above) — the change-tracking system
@@ -246,3 +258,15 @@ implies aggregated — the same lesson already flagged under "Transport tier cho
   Documentation Lead has messaged `number-hive-newvis`'s Lead directly for independent
   confirmation of deploy status and observed live traffic; pending reply as of this entry —
   see "Concrete decisions" above for the exact caveat, and update this history once resolved.
+- 2026-08-03 (later still) — `number-hive-newvis`'s Lead replied with firsthand confirmation,
+  checked directly against their repo/board/dev box: CHG-3977 is deployed to production
+  (integrated 2026-08-01 02:05, staging 07:35, production 07:43), `eventsPushWorker.js` is
+  live and wired exactly as designed, and the required env vars are set correctly on the dev
+  box only (matching admin's CHG-3975 dev endpoint) — never on staging/production, per its
+  intentional scope. However, the dev box's `fg_events` collection is empty and there's no
+  `fg_events_push_state` cursor document, so the worker has never actually pushed anything;
+  their dev server is also currently stopped. Their own verdict: "wired, unverified," not
+  "confirmed live." Documentation Lead accepted their offer to run a smoke test (start the dev
+  server, seed a real event, watch for a cursor doc / a 2xx in admin's ingest logs tagged
+  `sourceRepo: "number-hive-newvis"`) — outcome pending, will be recorded here once reported
+  back. See "Concrete decisions" above for full detail.

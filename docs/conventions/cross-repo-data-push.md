@@ -69,6 +69,13 @@ repos once a legitimate cross-repo need exists.
    The envelope is standard; `payload` is not — each flow defines its own contract for what it
    carries.
 
+   Separately, per `docs/conventions/deployment-version-tracking.md`, every tracked event
+   (including ones later pushed cross-repo via this envelope) should also carry `deployedAt`
+   (Unix ms) and `versionHash` (commit SHA) — added once at the source repo's tracking layer,
+   travelling with the event through the push. That convention's `deployedAt` is deliberately
+   Unix ms rather than this envelope's ISO8601 `occurredAt`: `occurredAt` times the event,
+   `deployedAt` times the deploy that produced it — different questions, both worth keeping.
+
 5. **Idempotent receivers.** Because batch re-sends and retries are core to the design (§3), every
    receiving endpoint must dedupe on `idempotencyKey` and treat re-delivery as a no-op, not an
    error and not a duplicate write.

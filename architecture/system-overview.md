@@ -39,7 +39,9 @@ repo the change actually lands in.
 the reasoning and the entitlement event-push mechanism specifically. For the generalised,
 cross-repo shape that mechanism (and its planned siblings — play/game usage data flowing the
 other way into `number-hive-admin`) should follow, see
-[`conventions/cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md).
+[`conventions/cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md). Every
+tracked event feeding these flows should also carry build-time deployment metadata — see
+[`conventions/deployment-version-tracking.md`](../docs/conventions/deployment-version-tracking.md).
 
 ---
 

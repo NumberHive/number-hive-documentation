@@ -18,9 +18,12 @@ recurring problems show up as the ecosystem grows:
   timestamps by hand, per repo, every time — and that reconstruction gets slower and less
   reliable the more repos and environments exist.
 
-Reference implementation: `number-hive-admin` (CHG pending on that repo's board as of
-2026-08-05). This document generalises that pattern so `number-hive-newvis` and future repos
-adopt the same shape rather than inventing their own.
+Reference implementation: `number-hive-admin`, tracked as CHG-4234 ("Track deployment
+timestamp + commit hash in event tracking") — **idea stage as of 2026-08-05, not yet specced,
+planned, or built.** This document generalises the intended pattern so `number-hive-newvis`
+and future repos adopt the same shape once it exists, rather than each inventing their own; do
+not treat anything in this document as confirmed-live until `number-hive-admin`'s Lead reports
+CHG-4234 shipped.
 
 ## The convention
 
@@ -154,8 +157,8 @@ bundler define.
 
 | Repo | Status | Notes |
 |---|---|---|
-| `number-hive-admin` | Reference implementation, CHG pending as of 2026-08-05 | First adopter — this document generalises that repo's approach |
-| `number-hive-newvis` | Not yet adopted | Next in line — prioritised given the upcoming friends-and-family launch and the existing `number-hive-newvis` → `number-hive-admin` events flow (`cross-repo-data-push.md`), where having `deployedAt`/`versionHash` on those pushed events will matter for debugging as soon as real usage starts |
+| `number-hive-admin` | **CHG-4234 — idea stage, not built** (confirmed by that repo's Lead 2026-08-05) | Designated reference implementation; do not describe as shipped until that repo's Lead confirms |
+| `number-hive-newvis` | Not yet adopted | Next in line — prioritised given the upcoming friends-and-family launch and the existing `number-hive-newvis` → `number-hive-admin` events flow (`cross-repo-data-push.md`), where having `deployedAt`/`versionHash` on those pushed events will matter for debugging as soon as real usage starts. Should follow, not precede, `number-hive-admin`'s CHG-4234 landing, so the reference implementation is proven first |
 | `number-hive-complete` | Not yet adopted | — |
 | `amber` | Not yet adopted (repo still early/shell stage) | Adopt when event tracking is built |
 
@@ -173,7 +176,14 @@ time (not runtime lookup) and the two field names/types match exactly.
 ## History
 
 - 2026-08-05 — Established at the request of `number-hive-admin`'s Assistant, who is building
-  the reference implementation there (CHG pending on that repo's board). Documented here per
-  this repo's charter (`README.md`: "shared conventions... multiple repos need to agree on")
-  so `number-hive-newvis` and future repos follow the same shape rather than each inventing
-  their own timestamp/version fields independently.
+  the reference implementation there. Documented here per this repo's charter (`README.md`:
+  "shared conventions... multiple repos need to agree on") so `number-hive-newvis` and future
+  repos follow the same shape rather than each inventing their own timestamp/version fields
+  independently.
+- 2026-08-05 (same day) — `number-hive-admin`'s Lead clarified the reference implementation is
+  tracked as **CHG-4234** and is at **idea stage** — not yet specced, planned, or built — despite
+  the initial request reading as build-in-progress. Confirmed the payload shape agreed here
+  (`{ deployedAt: Unix ms, versionHash: commit SHA }`) matches what their user asked for (deploy
+  time over an opaque version hash) and will conform the eventual spec to these exact field
+  names. Per-repo instantiation table corrected accordingly; nothing in this document should be
+  read as confirmed-live until that repo's Lead reports CHG-4234 shipped.

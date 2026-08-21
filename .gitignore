@@ -1,4 +1,5 @@
-# coder-team harness scaffolding — not repo content
+# Development-tooling scaffolding — not repo content
 .claude/
 .ct-uploads/
 .mcp.json
+.superpowers/

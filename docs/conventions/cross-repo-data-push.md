@@ -126,7 +126,7 @@ from `number-hive-admin`'s own `server/src/analytics/CONTEXT.md` (added alongsid
 endpoint, CHG-3975):
 
 - **Endpoint:** `POST /api/ingest/events` on `number-hive-admin` (dev:
-  `https://ripper.prawn-mamba.ts.net:20167/api/ingest/events`).
+  `https://<personal-dev-box>:20167/api/ingest/events`).
 - **Auth:** `Authorization: Bearer <NEWVIS_EVENTS_PUSH_SECRET>` — a scoped, single-direction
   credential per §6 above, distinct from the entitlement-push secret.
 - **Transport tier chosen:** batch/rollup lane (§2), not event-push — but note this flow ended
@@ -171,10 +171,10 @@ endpoint, CHG-3975):
     only advances on a 2xx). No idempotency-key dedup on the sending side — relies on the
     receiving side's `UNIQUE(row_key)` dedup instead, confirmed as intentional
     belt-and-braces, not a gap.
-  - **Env vars are set, but only on the dev box** (`nhvis.puddicombe.com`, the coder-team box's
+  - **Env vars are set, but only on the dev box** (`nhvis.puddicombe.com`, the personal preview box's
     port 20056 — per that repo's `DEPLOY.md`, "dev" there means whatever's running on that box,
     not a persistent Render/Docker environment). `NEWVIS_EVENTS_PUSH_URL` matches admin's
-    CHG-3975 dev endpoint (`https://ripper.prawn-mamba.ts.net:20167/api/ingest/events`)
+    CHG-3975 dev endpoint (`https://<personal-dev-box>:20167/api/ingest/events`)
     exactly; `NEWVIS_EVENTS_PUSH_SECRET` is set (non-empty). Correctly **not** set in
     staging/production, matching CHG-3977's scoped-dev-only design — no risk of an accidental
     prod push.
@@ -314,7 +314,7 @@ implies aggregated — the same lesson already flagged under "Transport tier cho
   its `idempotency_key` embeds the same Mongo `_id` twice as designed — a clean, two-sided,
   millisecond-matched confirmation. Flow status is now genuinely "confirmed live (dev)," not
   provisional. Two unrelated but useful corrections/cautions surfaced in the same reply,
-  recorded in their respective homes: (1) the old dev-only ClickHouse container on `ripper`
+  recorded in their respective homes: (1) the old dev-only ClickHouse container on a personally-hosted dev box
   was **not actually decommissioned** when CHG-4093 migrated the app off it — only the app-level
   dependency/tooling was removed; the container itself is still running, just stale (see
   `environment-urls.md` §4 for the correction); (2) `number-hive-admin`'s dev server has been

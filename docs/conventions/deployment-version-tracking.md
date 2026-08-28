@@ -2,8 +2,8 @@
 
 ## Why this lives here, not in one product repo
 
-Every NumberHive repo (`number-hive-complete`, `number-hive-newvis`, `number-hive-admin`, and
-`amber` once it's building) tracks events per `docs/conventions/analytics-and-ops-logging.md`
+Every NumberHive repo (`number-hive-complete`, `number-hive-newvis`, and `number-hive-admin`)
+tracks events per `docs/conventions/analytics-and-ops-logging.md`
 and pushes some of that data cross-repo per `docs/conventions/cross-repo-data-push.md`. Neither
 of those documents fixes *which build of the code* produced a given event. Without that, two
 recurring problems show up as the ecosystem grows:
@@ -160,7 +160,6 @@ bundler define.
 | `number-hive-admin` | **CHG-4234 — idea stage, not built** (confirmed by that repo's Lead 2026-08-05) | Designated reference implementation; do not describe as shipped until that repo's Lead confirms |
 | `number-hive-newvis` | Not yet adopted | Next in line — prioritised given the upcoming friends-and-family launch and the existing `number-hive-newvis` → `number-hive-admin` events flow (`cross-repo-data-push.md`), where having `deployedAt`/`versionHash` on those pushed events will matter for debugging as soon as real usage starts. Should follow, not precede, `number-hive-admin`'s CHG-4234 landing, so the reference implementation is proven first |
 | `number-hive-complete` | Not yet adopted | — |
-| `amber` | Not yet adopted (repo still early/shell stage) | Adopt when event tracking is built |
 
 Add a row here (or update an existing one) when a repo adopts this pattern, same as
 `analytics-and-ops-logging.md`'s per-repo instantiation table.

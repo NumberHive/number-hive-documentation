@@ -709,7 +709,7 @@ of that repo's UI.
 | Challenge Result end-screen | `src/ui/ChallengeResultCard.ts` (`showChallengeResultCard`) | Replaces the standard `ResultCard`/BUZZ post-game card for `gameMode === 'challenge'` — shows Challenge Score, best-of-N, creator comparison, retry/share |
 | "Challenge a Friend" action | `src/ui/ResultCard.ts` (`_doChallengeCreate`), vs_ai result card only | Creates a new seeded challenge and shares its link |
 
-*For `number-hive-newvis`'s full architecture, see its [`docs/architecture.md`](../../number-hive-newvis/docs/architecture.md); for the authoritative product/architecture decisions behind CHG-2330 see [`number-hive-complete`'s ADR-002](../../number-hive-complete/docs/adr/002-free-game-data-architecture.md).*
+*For `number-hive-newvis`'s full architecture, see its [`docs/architecture.md`](https://github.com/NumberHive/number-hive-newvis/blob/main/docs/architecture.md); for the authoritative product/architecture decisions behind CHG-2330 see [`number-hive-complete`'s ADR-002](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/002-free-game-data-architecture.md).*
 
 ---
 

@@ -33,17 +33,11 @@ flowchart TB
         PlayFE --> PlayAPI --> SchoolDB
     end
 
-    subgraph AdminArea["Company Ops / Admin — admin.numberhive.org (proposed, not yet built)\nnumber-hive-admin"]
-        AdminFE["Admin UI\n(today: bundled inside play's frontend)"]
-        AdminAPI["Admin API\n(today: bundled inside play's backend)"]
-        AdminDB[("Admin DB\nsubscriptions, billing, customers, orgs")]
+    subgraph AdminArea["Company Ops / Admin — deployed on Render, admin.numberhive.org not yet wired\n(confirmed via Render API + DNS/TLS check, 2026-08-31)\nnumber-hive-admin"]
+        AdminFE["Admin UI\n(billing/CRM screens: still bundled inside play's frontend today)"]
+        AdminAPI["Admin API\n(sign-in/RBAC/audit/entitlement-push: real;\nbilling/CRM: still bundled inside play's backend today)"]
+        AdminDB[("Admin Postgres\nsubscriptions, billing, customers, orgs\n(schema real; billing/CRM data not yet migrated)\n+ fg_events table — events mirror, live since 2026-08-02")]
         AdminFE --> AdminAPI --> AdminDB
-    end
-
-    subgraph AmberArea["Amber — persona-scoped staff PWA\namber"]
-        AmberApp["Amber app"]
-        AmberDB[("Amber's own store\nchat state, notes, approvals")]
-        AmberApp --> AmberDB
     end
 
     User --> WP
@@ -51,15 +45,33 @@ flowchart TB
     User --> PlayFE
 
     AdminAPI -- "entitlement projection (event push)\n{orgId, plan, status, seats, validUntil}" --> PlayAPI
-    AmberApp -. "scoped, read-only API\n(narrow, widens deliberately)" .-> AdminAPI
 
     WP -. "?nh_vid= URL-param handoff\ndesigned, not confirmed implemented" .-> PlayFE
     GameFE -. "no identity link today\n(isolated clientId/fg_visitors)" .-> PlayFE
+    GameAPI -. "usage events push (batch)\ncross-repo-data-push.md — confirmed live on dev\n2026-08-03; prod pending admin's non-dev envs" .-> AdminAPI
 ```
 
 Dotted lines are **designed but not confirmed/implemented**. Solid lines are live today.
-`AdminArea` boxes describe the *target* shape from ADR-005 — right now that code and data
-still live physically inside `number-hive-complete`.
+`AdminArea`'s billing/CRM boxes (`AdminFE`, and `AdminDB`'s subscriptions/billing/customers
+data) still describe the *target* shape from ADR-005 — that code and data still live
+physically inside `number-hive-complete`. `AdminAPI`'s sign-in/RBAC/audit-log/
+entitlement-push scaffolding is real and running in the `number-hive-admin` repo as of
+2026-08-01. The events mirror shipped to production 2026-08-02 (CHG-3975/CHG-3976) — it was
+built against a dev-only ClickHouse store initially, then migrated onto the same Admin
+Postgres database (`fg_events` table, CHG-4093) before shipping, so it's shown above as part
+of `AdminDB` rather than as a separate analytics store — see `system-overview.md`'s
+data-ownership table and `docs/conventions/cross-repo-data-push.md` for what's actually built
+vs. still target state.
+
+The `GameAPI -> AdminAPI` edge is a partial exception to the dotted-line rule above: both
+ends of that push are built and shipped (receiving side 2026-08-02, sending side
+`number-hive-newvis` CHG-3977 2026-08-01), and as of 2026-08-03 a smoke test confirmed the
+full mechanism actually works end-to-end (event insert → worker poll → push → 2xx → cursor
+advance, verified via a marked test event). It's still shown dotted not because it's
+unimplemented or unproven, but because it's confirmed on the **dev** environment only — the
+sending worker is deliberately kept dev-only until `number-hive-admin` has staging/production
+environments of its own, so there's no continuously-live production path yet. See
+`docs/conventions/cross-repo-data-push.md`'s flow table for the up-to-date status.
 
 ---
 
@@ -69,21 +81,21 @@ still live physically inside `number-hive-complete`.
 |---|---|---|---|
 | **Traffic profile** | High-volume, spiky, viral by design | Steady, school-hours patterns, paying customers | Low-volume, internal, staff-only |
 | **Data sensitivity** | Anonymous by design — no PII, COPPA / UK Children's Code | Student data — FERPA, GDPR, UK Children's Code **under school consent** | Billing, customer PII, org records |
-| **Repo** | `number-hive-newvis` | `number-hive-complete` | `number-hive-admin` (proposed) |
-| **Database** | `free_game` (separate Atlas DB) | `school_hive` (separate Atlas DB) | Own DB (proposed — currently shares `school_hive`) |
+| **Repo** | `number-hive-newvis` | `number-hive-complete` | `number-hive-admin` (deployed on Render — branch `main`, auto-deploy on, not suspended; `admin.numberhive.org` itself not yet wired — parked GoDaddy IP, expired TLS cert, confirmed 2026-08-31) |
+| **Database** | `free_game` (separate Atlas DB) | `school_hive` (separate Atlas DB) | Own Postgres (real) — including an `fg_events` events-mirror table, live since 2026-08-02 — billing/CRM data itself still lives in `school_hive` pending migration |
 | **Why separated** | A viral traffic spike must never degrade the paying school product; different compliance regime entirely | — | A bug/breach in the public site currently shares blast radius with billing/PII because it's the same schema/DB/deploy today |
 
-This three-way split (plus Amber as a fourth, narrower peer) is not incidental — it's the
+This three-way split is not incidental — it's the
 load-bearing architectural decision of the whole platform. The full reasoning lives in
 `number-hive-complete`'s ADRs, which stay authoritative there and are only linked from here:
 
-- [ADR-001](../../number-hive-complete/docs/adr/001-free-game-infrastructure.md) — free game vs. education app: separate DBs, same Atlas project, why a shared DB was rejected
-- [ADR-002](../../number-hive-complete/docs/adr/002-free-game-data-architecture.md) — free game identity/data model
-- [ADR-003](../../number-hive-complete/docs/adr/003-migration-safety.md) — protecting live users through backend evolution
-- [ADR-004](../../number-hive-complete/docs/adr/004-offline-first-and-cdn.md) — free game's offline-first/CDN deployment model
-- [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) — extracting admin from the education app; how Amber accesses company data; the entitlement event-push mechanism
+- [ADR-001](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/001-free-game-infrastructure.md) — free game vs. education app: separate DBs, same Atlas project, why a shared DB was rejected
+- [ADR-002](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/002-free-game-data-architecture.md) — free game identity/data model
+- [ADR-003](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/003-migration-safety.md) — protecting live users through backend evolution
+- [ADR-004](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/004-offline-first-and-cdn.md) — free game's offline-first/CDN deployment model
+- [ADR-005](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) — extracting admin from the education app; the entitlement event-push mechanism
 
-**One writer per data domain, no shared databases, no direct cross-service DB access anywhere on this diagram.** See [`system-overview.md`](system-overview.md) for the full data-ownership table.
+**One writer per data domain, no shared databases, no direct cross-service DB access anywhere on this diagram.** See [`system-overview.md`](system-overview.md) for the full data-ownership table. For *how* data legitimately moves between repos given that constraint (e.g. usage stats reaching `number-hive-admin`, or admin's entitlement data reaching play) — push, not pull; see [`conventions/cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md).
 
 ---
 
@@ -159,10 +171,12 @@ business" summary, that one is the "what's actually configured" reference.
 | Question | Document |
 |---|---|
 | Which repo owns which subdomain, and what's actually live vs. still DNS-unresolved? | [`subdomain-map.md`](subdomain-map.md) |
+| What's the actual URL/port for each surface, per dev/staging/production, cited to source? | [`environment-urls.md`](environment-urls.md) |
 | Which repo owns which data, and how do the pieces relate at a glance? | [`system-overview.md`](system-overview.md) |
-| Why are the free game and education app on separate databases? | [ADR-001](../../number-hive-complete/docs/adr/001-free-game-infrastructure.md) |
-| Why is admin being split out, and how will Amber access company data? | [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) |
+| Why are the free game and education app on separate databases? | [ADR-001](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/001-free-game-infrastructure.md) |
+| Why is admin being split out? | [ADR-005](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) |
 | What are the shared rules for analytics/ops logging across repos? | [`conventions/analytics-and-ops-logging.md`](../docs/conventions/analytics-and-ops-logging.md) |
+| How should one repo's data reach another (e.g. usage stats into admin) without direct DB access? | [`conventions/cross-repo-data-push.md`](../docs/conventions/cross-repo-data-push.md) |
 | What's the original two-frontend split proposal this platform grew out of? | [`platform-strategy.md`](platform-strategy.md) |
 
 ---

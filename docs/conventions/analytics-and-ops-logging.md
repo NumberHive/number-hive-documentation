@@ -48,6 +48,11 @@ their own instantiation, rather than re-deriving or re-explaining the reasoning 
    ops/security audience only and never joined into product-side analysis — in every repo, not
    just wherever it happened to be added first.
 
+6. **Every tracked event (either audience) carries deployment version info.** Per
+   `docs/conventions/deployment-version-tracking.md`: a build-time-injected `deployedAt`
+   (Unix ms) and `versionHash` (commit SHA), so a wrong-looking event is debuggable back to
+   exactly which deploy produced it, without cross-referencing deploy logs by hand.
+
 ## Per-repo instantiation
 
 | Repo | Product/growth collection | Ops/security collection | Repo-local reference |
@@ -66,6 +71,12 @@ See `architecture/subdomain-map.md` for the fuller picture of how (and whether) 
 is actually stitched together across the marketing site, free game, and education app today —
 this table only tracks which repos have adopted the audience-separation pattern, not whether
 their identity spaces are unified.
+
+This convention governs *what* gets tracked and how it's partitioned within a single repo's own
+database. It says nothing about how that data (or any other domain data) should reach a
+*different* repo once there's a legitimate need — e.g. `number-hive-admin` wanting to show
+`fg_events`-derived usage stats. That's a separate, complementary convention — see
+[`cross-repo-data-push.md`](cross-repo-data-push.md).
 
 ## Open cross-repo action items
 

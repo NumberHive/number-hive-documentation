@@ -5,8 +5,8 @@ recorded by the plan itself, cross-checked against the current code. Status only
 recommendations, no estimates.
 
 **Source documents (in `number-hive-complete`, not duplicated here):**
-- [`SECURITY-REMEDIATION-PLAN.md`](../../number-hive-complete/SECURITY-REMEDIATION-PLAN.md) — the phase plan, dated 2026-03-29
-- [`AUDIT-2026-03-23.md`](../../number-hive-complete/AUDIT-2026-03-23.md) — the audit the plan responds to, dated 2026-03-23
+- [`SECURITY-REMEDIATION-PLAN.md`](https://github.com/NumberHive/number-hive-complete/blob/main/SECURITY-REMEDIATION-PLAN.md) — the phase plan, dated 2026-03-29
+- [`AUDIT-2026-03-23.md`](https://github.com/NumberHive/number-hive-complete/blob/main/AUDIT-2026-03-23.md) — the audit the plan responds to, dated 2026-03-23
 
 ---
 
@@ -25,12 +25,18 @@ one exception category: the 8 auth-flow methods in `backend/src/graphql/user/aut
 audit and the plan record as intentionally unprotected. No unguarded methods found outside that
 list. Commit `45e8482` is present in history and touches the 17 resolver files the plan names.
 
-**Divergence found — confirm with James:** the plan's own text says **53** methods; the
-commit message on `45e8482` says *"add `@Authorized()` decorator to **69** unprotected GraphQL
-resolver methods"*, and the audit (`AUDIT-2026-03-23.md`, Finding 4.1) also states **69**. The
-file count (17) matches across plan, commit, and audit — only the method count in the plan's
-prose disagrees with its own cited commit and the audit it's tracking. Not resolved here either
-way.
+**Divergence — resolved 2026-08-31 by manual count.** The plan's own text says **53** methods;
+the commit message on `45e8482` says *"add `@Authorized()` decorator to **69** unprotected
+GraphQL resolver methods"*; the audit (`AUDIT-2026-03-23.md`, Finding 4.1) also states **69**.
+Manually counting the actual methods touched by `45e8482` across the 17 named resolver files
+gives **52** — neither of the two figures already on record (53, 69) is correct. The file count
+(17) does match across plan, commit, and audit. This is now reported as the count, not left as
+an open question.
+
+**Which branch carries this commit:** `45e8482` (2026-03-28) is old enough to sit in the common
+ancestry of effectively every active branch in the repo — confirmed present on `main`,
+`production`, and `staging` alike (`git branch --contains 45e8482`). There's no branch where
+this fix is missing; it isn't a "has this shipped yet" question.
 
 ### 1.2 AI move timing
 
@@ -71,11 +77,16 @@ monkey-patch.
 **Plan states:** `frontend/Dockerfile` line 26 uses `node:18-alpine`, needs to move to
 `node:20-alpine`.
 
-**Divergence found — confirm with James:** `frontend/Dockerfile` line 26 currently reads
-`FROM node:22-alpine AS builder` — not Node 18, and past the plan's own Node 20 target. The
-plan lists this item as **PLANNED / not started**, but the code shows it already resolved (and
-exceeded). Not clear from the repo alone whether this happened as deliberate, untracked
-follow-up work or the plan status simply wasn't updated after the fact.
+**Divergence — resolved 2026-08-31 via git history.** `frontend/Dockerfile` line 26 currently
+reads `FROM node:22-alpine AS builder` — not Node 18, and past the plan's own Node 20 target.
+The plan lists this item as **PLANNED / not started**, but the code shows it already resolved
+(and exceeded). Traced to a single commit, `782e315` (2026-05-25, James Puddicombe): it went
+straight from 18 to 22, **never staged through 20 at all** — so this wasn't the plan's Node
+18→20 step executed and then further upgraded, it was a separate, direct jump. The commit
+message cites an npm 8 / `lockfileVersion 3` incompatibility as the reason. This reads as
+untracked follow-up work done for an unrelated tooling reason, not a deliberate execution of
+the plan's 2.3 item — the plan's status line for this item was simply never updated to reflect
+what actually happened.
 
 ---
 
@@ -108,17 +119,19 @@ Matches the plan's stated status.
 
 | Phase | Item | Plan status | Code status |
 |---|---|---|---|
-| 1.1 | Resolver auth guards | Complete | Confirmed present (method-count divergence noted above) |
+| 1.1 | Resolver auth guards | Complete | Confirmed present (method count corrected to 52 — see above) |
 | 1.2 | AI move timing | Complete (bundled) | Confirmed present |
 | 2.1 | JWT signature verification | Planned | Confirmed absent |
 | 2.2 | Rate limiting / headers / CORS | Planned | Confirmed absent |
-| 2.3 | Frontend Node 18→20 | Planned | **Diverges — already on Node 22** |
+| 2.3 | Frontend Node 18→20 | Planned | **Diverges — already on Node 22, via a separate direct jump, not this plan item executed** |
 | 3.1 | Refresh token expiry/rotation | Planned | Confirmed absent |
 
-**Two findings flagged "confirm with James"** (see 1.1 and 2.3 above): a method-count
-inconsistency internal to the plan document, and a Dockerfile Node version that's already ahead
-of what the plan describes as not-yet-started. Neither has been corrected in the source
-documents — this file reports the divergence, it doesn't resolve it.
+**Two divergences, both resolved 2026-08-31** (see 1.1 and 2.3 above): the plan/commit/audit
+method-count inconsistency (actual count: 52, matching none of the three prior figures), and
+the Dockerfile Node version jump (18→22 direct in one commit, `782e315`, for an npm/lockfile
+compatibility reason, never staged through 20). Neither has been corrected in the source
+documents in `number-hive-complete` (out of scope — different repo, different Lead) — this file
+reports what the evidence shows, it doesn't edit the plan itself.
 
 ---
 

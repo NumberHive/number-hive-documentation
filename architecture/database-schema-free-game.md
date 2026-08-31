@@ -8,6 +8,13 @@ cited directly to the actual route/lib source that reads and writes each collect
 below was read directly from `number-hive-newvis/backend/src/` on 2026-08-28 — treat this as a
 snapshot, not a live-synced reference; re-check against the source if consulted much later.
 
+**For document lifecycles, indexes, and the ADR-003 storage contract as it applies to this
+database**, see the companion handover document
+[`../handover/arcade-data-model.md`](../handover/arcade-data-model.md) — it builds on this
+document's entity/field reference rather than repeating it, covering how a match/challenge/
+invite/rating moves through its states over time, why each index exists, and which ADR-003
+rules have a checkable footprint in these collections.
+
 **No ODM — this is why the earlier model-file search found nothing.** Unlike
 `number-hive-complete` (Typegoose over Mongoose — see
 [`database-schema-education-app.md`](database-schema-education-app.md)), `number-hive-newvis`'s
@@ -55,6 +62,23 @@ omitted from the diagram and covered only in the table in §2.6. Field lists are
 identifying fields only — see §2's full tables for everything. Every relationship is an
 application-level string-key join, not an enforced reference; ref-style diagram notation is used
 here loosely, to mean "joined by matching string value," not "declared foreign key."
+
+Before the full diagram, here's the same domain stripped down to the handful of collections
+that matter for orienting yourself — an anonymous `VISITOR` may register as an `ACCOUNT`, which
+generates `EVENT`s, plays in `MATCH`es, builds a social graph via `CONNECTION`s, and can hold a
+`PUSH_SUBSCRIPTION` for notifications. Every box here explodes into more entities and detail in
+the full diagram below — this is the map, not the territory:
+
+```mermaid
+erDiagram
+    VISITOR ||--o| ACCOUNT : "may register as"
+    ACCOUNT ||--o{ EVENT : "generates"
+    ACCOUNT ||--o{ MATCH : "plays in"
+    ACCOUNT ||--o{ CONNECTION : "builds social graph via"
+    ACCOUNT ||--o{ PUSH_SUBSCRIPTION : "has"
+```
+
+The full picture, with every collection, relationship, and field-level detail:
 
 ```mermaid
 erDiagram

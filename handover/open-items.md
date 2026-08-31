@@ -391,7 +391,7 @@ isn't there.
 ### 22. `remove-user-from-hive` — teacher role check without hive-ownership check
 
 **What's known:**
-`backend/src/graphql/hive/remove-user-from-hive/remove-user-from-hive.service.ts` (~line 11)
+`backend/src/graphql/hive/remove-user-from-hive/remove-user-from-hive.service.ts` (line 11)
 only checks that the requesting user's `userType === TEACHER` before removing a student from a
 Hive — it does not check that the requesting teacher actually owns (`Hive.ownerId`) the specific
 Hive the student is being removed from. Every other Hive-mutating path checked during this pass
@@ -405,6 +405,39 @@ oversight rather than a deliberate decision. Found while writing
 Education team whether there's a reason it's intentionally permissive.
 
 **Owner:** David, early — low effort, plausible real gap.
+
+---
+
+### 23. Journey resolvers — no ownership check on any client-supplied ID (more severe than #22)
+
+**What's known:** `backend/src/graphql/journey/journey.resolver.ts` guards every method with
+`@Authorized()` only (authentication, not ownership — see `access-model.md` §1 for what that
+decorator does and doesn't check). Seven of its methods accept a client-supplied ID
+(`userId`, `id`, or `journeyId`) and perform the corresponding read/write/delete with **no check
+that the ID belongs to the requesting user** (`context.userId`) or any other ownership/membership
+relation:
+- `journeysByUser` (line 29) — returns any user's full Journey list, given their `userId`.
+- `journeyByUserAndGametype` (line 35) — same, scoped to one game type.
+- `updateJourney` (line 47) — updates any Journey document by its `id`, arbitrary fields.
+- `deleteJourney` (line 68) — deletes any Journey document by its `id`.
+- `upsertJourney` (line 77) — creates or overwrites any user's Journey, given their `userId`.
+- `addJourneyHistory` (line 98) — appends a history entry to any Journey by its `journeyId`.
+- `upsertJourneyHistory` (line 108) — same, upsert form.
+
+Confirmed by direct reading of the full resolver file (not inferred from a partial search) —
+every affected method was read line-by-line on 2026-08-31. Unlike #22, this isn't scoped to Hive
+membership at all: any authenticated user, student or teacher, can read, overwrite, or delete any
+other user's Journey progression data system-wide. Found while writing
+[`access-model.md`](access-model.md) §1 (2026-08-31) — not fixed as part of this handover
+(documentation only).
+
+**Next step:** add an ownership check (`userId === context.userId`, or a lookup joining `id`/
+`journeyId` back to `context.userId` for the methods that don't take `userId` directly) to all
+seven methods before this ships to a wider surface. Given the blast radius (arbitrary read/write/
+delete of any user's data, not just a Hive-scoped removal), this reads as higher priority than
+#22 above.
+
+**Owner:** David, urgent — recommend triaging before other Education-side work.
 
 ---
 

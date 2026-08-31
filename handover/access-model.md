@@ -34,16 +34,16 @@ this codebase it's called with no arguments — it only asserts the request is a
 `backend/src/graphql/**` (e.g. `journey.resolver.ts`).
 
 **Admin gating:** a separate middleware, `authenticateAdmin`
-(`backend/src/services/auth-service.ts`, ~lines 100–105), applied via `@UseMiddleware(authenticateAdmin)`
+(`backend/src/services/auth-service.ts`, lines 100–105), applied via `@UseMiddleware(authenticateAdmin)`
 on admin-only resolvers (e.g. `backend/src/graphql/admin/users/users.resolver.ts`). It checks
 `context.user?.isAdmin === true` and throws `Errors.ACCESS_DENIED` otherwise — a flat boolean
 gate, not a role hierarchy.
 
 **Hive ownership and membership:**
-- `Hive.ownerId` (`backend/src/database/models/hive.ts`, ~line 43) — a `Ref<User>` to the teacher
+- `Hive.ownerId` (`backend/src/database/models/hive.ts`, line 43) — a `Ref<User>` to the teacher
   who created the Hive (a Hive is the code-side name for a class/group — see the glossary in
   [`README.md`](README.md)).
-- `HiveUserRelation` (`backend/src/database/models/hive-user.ts`, ~lines 22–37) — the
+- `HiveUserRelation` (`backend/src/database/models/hive-user.ts`, lines 22–37) — the
   membership/join record: `ownerId`, `userId` (the student), `hiveId`, and `code` (the join-code
   used). Indexed on `{ userId, code }` and uniquely on `{ ownerId, userId, hiveId }`.
 - **Join-code flow** (`backend/src/graphql/hive/join-hive/join-hive.service.ts`, lines 14–57):
@@ -53,13 +53,13 @@ gate, not a role hierarchy.
   obviously a bug, but worth knowing: the join-code is a bearer secret, not a request that a
   teacher approves.
 - **Ownership/membership checks on Hive data reads**
-  (`backend/src/graphql/hive/hive-users/hive-users.service.ts`, lines 16–39 and ~101–150): a
-  teacher must own the Hive (`Hive.exists({ _id: hiveId, ownerId: currentUser._id })`); a student
-  must be a member (`HiveUserRelation.exists({ userId: currentUser._id })`), and can only view
-  their own profile within it, not a classmate's.
+  (`backend/src/graphql/hive/hive-users/hive-users.service.ts`, `getHiveUsers` at lines 16–99 and
+  `getHiveUser` at lines 101–150): a teacher must own the Hive (`Hive.exists({ _id: hiveId,
+  ownerId: currentUser._id })`); a student must be a member (`HiveUserRelation.exists({ userId:
+  currentUser._id })`), and can only view their own profile within it, not a classmate's.
 
 **A gap worth flagging, found while reading this code (not previously documented anywhere):**
-`backend/src/graphql/hive/remove-user-from-hive/remove-user-from-hive.service.ts` (line ~11)
+`backend/src/graphql/hive/remove-user-from-hive/remove-user-from-hive.service.ts` (line 11)
 only checks `userType === TEACHER` before removing a student from a Hive — it does **not** verify
 the requesting teacher actually owns the specific Hive in question. As written, any
 teacher-typed account can remove any student from any Hive, not just their own. This reads like
@@ -68,11 +68,27 @@ ownership). Worth a fast follow-up fix; added to
 [`open-items.md`](open-items.md) rather than fixed silently here, since it's a behaviour change
 outside this handover pass's scope.
 
-**Journey model** (`backend/src/database/models/journey.ts`, lines 35–53) — a student's
-progression through content, scoped by `userId`. No resolver-level check was found that the
-requesting user matches the queried `userId`; access appears to rely on queries always being
-built from `context.userId` rather than accepting an arbitrary target ID. Not confirmed exploitable,
-just noted as unverified rather than actively checked.
+**Journey model — confirmed cross-tenant authorization gap, more severe than the Hive-removal one
+above.** `Journey` (`backend/src/database/models/journey.ts`, lines 35–53) is a student's
+progression through content, scoped by `userId`. Every resolver in
+`backend/src/graphql/journey/journey.resolver.ts` carries `@Authorized()` only
+(authentication-only — see above), and every read/write path that takes a client-supplied ID does
+**no check anywhere that the ID belongs to `context.userId`**. Read directly, line by line:
+- `journeysByUser` (line 29) — returns *any* user's full Journey list, given their `userId`.
+- `journeyByUserAndGametype` (line 35) — same, scoped to one game type.
+- `updateJourney` (line 47) — updates *any* Journey document by its `id`, arbitrary fields.
+- `deleteJourney` (line 68) — deletes *any* Journey document by its `id`.
+- `upsertJourney` (line 77) — creates or overwrites *any* user's Journey, given their `userId`.
+- `addJourneyHistory` (line 98) — appends a history entry to *any* Journey by its `journeyId`.
+- `upsertJourneyHistory` (line 108) — same, upsert form.
+
+In practice: any authenticated user — student or teacher, anywhere in the system — can read,
+overwrite, or delete any other user's Journey progression data simply by supplying their
+`userId`/`id`/`journeyId`, none of which are validated against `context.userId` or any
+ownership/membership relation. This is confirmed by direct reading of the resolver file, not
+inferred. Also added as [`open-items.md`](open-items.md) item #23, since — unlike the
+`remove-user-from-hive` gap above, which is scoped to Hive membership — this affects arbitrary
+read/write/delete of any user's data with no Hive relationship required at all.
 
 **Organisation** (`backend/src/database/models/organisation.ts`) — `name`, `type` (`school` |
 `district` | `trust`), optional `parentOrgId`. Admin-managed; not linked to a `User` directly, so
@@ -100,7 +116,8 @@ in product terms, see the glossary), and `clientIds`: an array of up to 50 guest
 values that have been stitched to this account (the anonymous→authenticated linking mechanism,
 lines 158–160 and 195).
 
-**Match ownership and turn checks** (`backend/src/routes/matches.js`, lines ~234–257): a move
+**Match ownership and turn checks** (`backend/src/routes/matches.js`, lines 253–257, within the
+broader auto-join handling starting ~line 225): a move
 submission is checked against `match.gameState.currentPlayer`, matched by `clientId` against
 `match.players[].clientId`. Whoever holds the right `clientId` for the current turn can move —
 there's no separate "is this really the account that owns this clientId" check beyond that, which
@@ -111,7 +128,7 @@ rather than requiring sign-in.
 /challenges/:challengeId/attempts` (`backend/src/routes/challenges.js`, lines 189–236) accepts
 any `clientId` in the request body and records an attempt against the given `challengeId` with no
 check that the submitter was invited, is a "connection," or has any prior relationship to the
-challenge creator. The file's own header comment (lines ~177–182) states this explicitly: *"No
+challenge creator. The file's own header comment (lines 177–182) states this explicitly: *"No
 turn/ownership concept (unlike `/matches/:matchId/moves`) — any client can submit an attempt
 against any known challenge id."* This is intentional (a "Play-Me link"/standing link is meant to
 be a shareable, replayable open invitation — see the glossary in [`README.md`](README.md) for the
@@ -136,29 +153,36 @@ class, group, or teacher; it's flat player-to-player.
 no customer-facing accounts at all, unlike the other two.
 
 **Session:** stateless — no server-side session table. On sign-in
-(`server/src/routes/auth.ts`, lines 64–83) the user is upserted into a `users` table
-(`server/src/db/migrations/0001_create_users.sql`) and an HMAC-SHA256-signed, HttpOnly cookie is
-set carrying `{ sub, email, name, picture, role, themePreference }` directly — a 12-hour sliding
-expiry, 7-day absolute cap (see `docs/adr/0001-stateless-session-cookie.md` in that repo for the
-full rationale/trade-offs).
+(`server/src/routes/auth.ts`, lines 71–83) the user is upserted into a `users` table
+(`server/src/db/migrations/0001_create_users.sql`, line 9: `role TEXT NOT NULL DEFAULT 'staff',`)
+and `setSessionCookie()` (`server/src/auth/session.ts`, lines 135–148) sets an HMAC-SHA256-signed
+(lines 46–47), HttpOnly cookie — a base64url-encoded JSON payload plus a base64url-encoded HMAC
+signature (line 56) — carrying `{ sub, email, name, picture, role, themePreference }` directly, a
+12-hour sliding expiry, 7-day absolute cap (see `docs/adr/0001-stateless-session-cookie.md` in
+that repo for the full rationale/trade-offs).
 
 **RBAC: there isn't one, by explicit decision.** `users.role` exists as a column (default
 `'staff'`) and rides along in the session cookie, but **nothing in the codebase branches on it**.
-Per `server/src/auth/CONTEXT.md` (lines 53–94, dated 2026-07-27): *"Admin = any request carrying a
-session that passed the staff-domain gate... There are no role tiers, and none are currently
-planned."* Every route that checks anything checks only "is there a valid signed session" — see
-e.g. `server/src/routes/auditLog.ts`, `server/src/routes/entitlements.ts`,
+Per `server/src/auth/CONTEXT.md` (lines 53–94, quote at lines 55–56, dated line 57's 2026-07-27):
+*"Admin = any request carrying a session that passed the staff-domain gate above. There are no
+role tiers, and none are currently planned."* Every route that checks anything checks only "is
+there a valid signed session" — see e.g. `server/src/routes/auth.ts` (line 41,
+`readSessionEnvelope(...)`), `server/src/routes/auditLog.ts`, `server/src/routes/entitlements.ts`,
 `server/src/routes/analyserQuery.ts`, all using the same inline `readSessionEnvelope(...)` pattern
-rather than a shared middleware (a `requireAuth` middleware exists at
-`server/src/middleware/requireAuth.ts` but isn't wired into any route yet). **If role-based
-access ever needs to be introduced here, it needs a new, explicit decision — the schema is ready
-for it (the column exists) but the enforcement isn't, anywhere.**
+rather than a shared middleware (a `requireAuth` middleware is defined at
+`server/src/middleware/requireAuth.ts`, lines 26–47, with a comment at lines 14–24 explicitly
+noting it isn't yet wired to any route — confirmed by search: zero imports of `requireAuth`
+anywhere in non-test code). **If role-based access ever needs to be introduced here, it needs a
+new, explicit decision — the schema is ready for it (the column exists) but the enforcement
+isn't, anywhere.**
 
 **Audit log** (`server/src/db/migrations/0003_create_audit_log.sql`,
-`server/src/db/auditLogRepo.ts`): schema and a `recordAuditEvent()`/`listAuditEvents()` pair exist
-(actor email, action, target type/id, JSON metadata, timestamp), readable via `GET
-/api/audit-log`. **No route in the codebase actually calls `recordAuditEvent()` yet** — it's
-scaffolding for a future tier of admin routes (CHG-3667), not a live trail of anything that's
+`server/src/db/auditLogRepo.ts`, `recordAuditEvent()` at lines 33–39): schema and a
+`recordAuditEvent()`/`listAuditEvents()` pair exist (actor email, action, target type/id, JSON
+metadata, timestamp), readable via `GET /api/audit-log`. **Confirmed by a repo-wide search: no
+route anywhere calls `recordAuditEvent()`** — the migration file's own comment (lines 1–2) says as
+much: "No caller writes to this table yet — Tier 1 admin routes...don't exist in this repo yet."
+It's scaffolding for a future tier of admin routes (CHG-3667), not a live trail of anything that's
 happened so far.
 
 **Entitlement push** (ADR-005) is a one-way data feed (`entitlements` table → pushed to
@@ -228,6 +252,8 @@ person do across the whole platform" without checking three systems separately.
 ---
 
 *Written 2026-08-31 as part of the incoming technical lead's handover package. All claims cited
-to file paths read directly in each repo on that date; ambiguities and possible gaps are flagged
-inline rather than smoothed over — see §1's `remove-user-from-hive` note in particular, which is
-also tracked in [`open-items.md`](open-items.md).*
+to file paths and line numbers read directly in each repo on that date, and cross-checked by a
+second independent pass over each of the three repos before this was finalized; ambiguities and
+possible gaps are flagged inline rather than smoothed over — see §1's `remove-user-from-hive` and
+`Journey` resolver notes in particular, both also tracked in [`open-items.md`](open-items.md)
+(items #22 and #23).*

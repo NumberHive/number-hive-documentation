@@ -33,6 +33,13 @@ this codebase it's called with no arguments — it only asserts the request is a
 (`context.userId` is set), not that any particular `userType` holds. Seen on resolvers throughout
 `backend/src/graphql/**` (e.g. `journey.resolver.ts`).
 
+**Credential model:** the token that `@Authorized()` and `authenticateAdmin` both rely on has its
+own gaps — `validateAccessToken` checks a token by DB lookup only, without verifying the JWT
+signature, and refresh tokens carry a 30-year expiry — see
+[`security-remediation-status.md`](security-remediation-status.md) for the full detail and
+remediation status. This document covers identity, authorization, and ownership/scope; that one
+covers the credential itself.
+
 **Admin gating:** a separate middleware, `authenticateAdmin`
 (`backend/src/services/auth-service.ts`, lines 100–105), applied via `@UseMiddleware(authenticateAdmin)`
 on admin-only resolvers (e.g. `backend/src/graphql/admin/users/users.resolver.ts`). It checks

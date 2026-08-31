@@ -208,7 +208,7 @@ team this size, but "what do I do when something breaks at 2am" shouldn't be a b
 
 ---
 
-## New this pass — surfaced while extending `tech-inventory.md` for the Dave handover session
+## New this pass — surfaced while extending `tech-inventory.md` for the handover session
 
 Six items were specifically commissioned to check against code. Three confirm as originally
 framed; three turned out to need correcting once checked against the actual repos — reported
@@ -275,7 +275,7 @@ there's unfinished work here.
 
 **Owner:** David, trivial cleanup whenever convenient.
 
-### 18. Constraint-drop script (CHG-2285) — confirm it has actually completed against production
+### 18. Constraint-drop script (CHG-2285) — confirmed NOT run against production
 
 **What's known:** `backend/src/graphql/admin/subscription-sync/subscription-index-migration.ts`
 (design doc: `docs/superpowers/specs/2026-07-04-subscription-index-migration-design.md`) is a
@@ -284,16 +284,19 @@ self-healing script that drops and recreates the `stripeSubscriptionId_1` MongoD
 side effect of a real (non-dry-run) "Run Sync" click in the admin panel's Stripe-sync tooling.
 There is no rollback path once it has run.
 
-**What's not known:** whether this has actually completed successfully against the production
-MongoDB cluster since it shipped (2026-07-04). No execution/verification log was found in this
-repo confirming a production run.
+**Resolved 2026-08-31 — confirmed NOT run.** Queried directly against production via the
+read-only `MONGODB_READONLY_URI` credential (never the read-write one): the
+`stripeSubscriptionId_1` index exists on the production `subscriptions` collection, but it
+**lacks both the `unique` and `sparse` flags** the migration would have set. The index is still
+in its pre-migration state.
 
-**Why it matters:** if it hasn't run yet, the index may still be in whatever state predates
-this migration, which matters for anyone relying on `stripeSubscriptionId` uniqueness at the DB
-level. If it has run and something went wrong partway, there's no built-in undo.
+**Why it matters:** `stripeSubscriptionId` uniqueness is not currently enforced at the DB
+level. This is a live, present-tense gap, not a historical question — whoever runs this
+migration should do so deliberately, watching for the duplicate-guard the script performs
+first, rather than assume it already happened.
 
-**Next step:** unverified — confirm with James whether this has been run against production,
-and if so, when and with what result.
+**Next step:** decide whether to run the migration now (via a real "Run Sync" click) or leave
+it deliberately unrun; either way, this is now a decision to make, not a fact to chase down.
 
 **Owner:** David, in the handover session — this is exactly the kind of thing the session
 exists to close out.
@@ -317,16 +320,19 @@ data via `mongorestore`, that older code will be reading for field names
 `_USD` Decimal128 field names in place, not duplicated alongside the old ones. **Any future
 rollback of this migration must restore data, not just code.**
 
-**What's not known:** whether the actual production `--live` backfill has run. A
-suggestively-timestamped backup folder exists at
-`backend/backups/stripe-usd-20260715T100905Z/` but **it is empty** — no archive files inside
-it — which is not proof either way (an empty folder is consistent with "the backup step never
-actually wrote anything" or "this is a leftover directory from a dry run"), but it is not
-evidence of a completed live run either.
+**Resolved 2026-08-31 — confirmed the live backfill DID run.** Queried directly against
+production via the read-only `MONGODB_READONLY_URI` credential (never the read-write one):
+every sampled `*_USD` field on `subscriptions`, `subscriptioninvoices`, and
+`subscriptioncharges` is BSON type `Decimal128` in production today — the migration is
+complete and live. The empty backup folder at `backend/backups/stripe-usd-20260715T100905Z/`
+remains unexplained (possibly the backup step didn't write archives where expected, possibly a
+leftover dry-run directory), but it's no longer load-bearing for the "did this run" question —
+the data itself answers that directly. It's still worth finding out **where the real backup
+archive actually is**, given §6 of the runbook depends on one existing for any future rollback.
 
-**Next step:** unverified — confirm with James whether the production `--live` backfill for
-this migration has actually run, and if so, whether the corresponding backup archives exist
-somewhere other than this empty folder.
+**Next step:** locate the actual backup archive for this migration (if the empty folder isn't
+it) and confirm it's retrievable, so the documented `mongorestore` rollback path in the runbook
+is actually usable if it's ever needed.
 
 **Owner:** David, in the handover session — highest-stakes item in this new section, since it
 touches live billing data with a schema-destructive, one-way change.
@@ -355,23 +361,50 @@ isn't there.
 
 ### 21. Fragile areas flagged this pass, not elsewhere covered
 
-- **Stripe webhook double-`case` bug** (`invoice.payment_failed` handled twice in
-  `backend/src/utils/stripe.ts`, lines 278 and 339 — the second block is dead code). See
-  [`tech-inventory.md`](tech-inventory.md) §4 for the full event table. Not fixed as part of
-  this handover (documentation only) — worth a real look at which block was meant to be
-  authoritative.
-- **`cancelSubscription()` in `backend/src/utils/stripe.ts` has no confirmed non-test caller.**
-  Possibly dead code, possibly cancellation happens entirely through the Stripe billing portal
-  rather than this app's own code path — unverified, confirm with James.
+- **Stripe webhook double-`case` bug — confirmed, resolved by evidence, not yet fixed in code.**
+  `invoice.payment_failed` is handled by two `case` blocks in `backend/src/utils/stripe.ts`:
+  the first at lines 278–281, the second at lines 339–342. Per JS `switch` semantics (first
+  match plus an early `return` inside it), **the first block always wins**; the second is
+  genuinely unreachable dead code, not a merge artifact — it was added later, in a separate
+  commit (`fc3f1630`, CHG-1917, 2026-06-24). See [`tech-inventory.md`](tech-inventory.md) §4 for
+  the full event table. Not fixed as part of this handover (documentation only) — the dead
+  second block should simply be deleted; there's no ambiguity left about which is authoritative.
+- **`cancelSubscription()` in `backend/src/utils/stripe.ts` — confirmed dead code.** Zero callers
+  anywhere in the backend or frontend, and no GraphQL mutation exposes it. Subscription
+  cancellation actually happens entirely through Stripe's hosted billing portal
+  (`createPortalSession`, which *is* wired up and used) — not through this app's own code path.
+  Safe to delete, or leave as documented dead code; not an active risk either way.
 - **No distributed lock on `number-hive-complete`'s three in-process `node-cron` jobs**
   (digest, financial reconciliation, journey-stage sync — see
   [`tech-inventory.md`](tech-inventory.md) §7). Not an active risk on a single Render instance,
   but would silently double-fire (e.g. double-pulling Stripe invoices) if ever scaled without
   adding a lock first.
-- **Temporal's `startScheduledEvent` capability has zero production call sites** found this
-  pass — only referenced from test mocks, despite Temporal being live infrastructure for the
-  70-second disconnect-timeout use case. Not claimed as dead code (a static grep can miss
-  dynamically-started workflows), but worth confirming with James whether anything relies on it.
+- **Temporal's `startScheduledEvent` capability — no production call site found.** Defined in
+  `backend/src/services/timed-events/timed-event.ts` but not exported from that module's public
+  index; the only reference anywhere is from a test mock. The real 70-second
+  disconnect-timeout mechanism actually in production use is a separate function,
+  `startEvent`/`startDisconnectTimeout`. This is a static-search result, not a dynamic-trace
+  result — it's possible for a workflow to be started in a way a grep can't see — so it's
+  reported as "no call site found," not "confirmed dead code." Worth a quick confirmation with
+  whoever wrote it if there's any doubt before removing it.
+
+### 22. `remove-user-from-hive` — teacher role check without hive-ownership check
+
+**What's known:**
+`backend/src/graphql/hive/remove-user-from-hive/remove-user-from-hive.service.ts` (~line 11)
+only checks that the requesting user's `userType === TEACHER` before removing a student from a
+Hive — it does not check that the requesting teacher actually owns (`Hive.ownerId`) the specific
+Hive the student is being removed from. Every other Hive-mutating path checked during this pass
+(e.g. `hive-users.service.ts`) does enforce ownership, which makes this one read like an
+oversight rather than a deliberate decision. Found while writing
+[`access-model.md`](access-model.md) §1 (2026-08-31) — not fixed as part of this handover
+(documentation only).
+
+**Next step:** add an `ownerId` check (mirroring the pattern already used in
+`hive-users.service.ts`) before this ships to a wider admin surface, or confirm with the
+Education team whether there's a reason it's intentionally permissive.
+
+**Owner:** David, early — low effort, plausible real gap.
 
 ---
 

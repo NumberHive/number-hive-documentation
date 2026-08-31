@@ -44,6 +44,25 @@ collections (Analyser query builder, dashboards, audit logs) — those are liste
 diagram without adding architectural insight. Field lists below are the significant/identifying
 fields only, not exhaustive — see §2–§3's full tables for everything.
 
+Before the full diagram, here's the same domain stripped down to the handful of entities that
+matter for orienting yourself — a school (`ORGANISATION`) buys a `SUBSCRIPTION`, its `HIVE`s
+(classes) contain `USER`s, and those users generate `JOURNEY` (learning) and `GAME` (gameplay)
+activity, all captured to `TRACK_EVENT` for analytics. Every box here explodes into more detail
+(and more entities) in the full diagram below — this is the map, not the territory:
+
+```mermaid
+erDiagram
+    VISITOR ||--o| USER : "linked at signup"
+    ORGANISATION ||--o{ HIVE : "owns"
+    ORGANISATION ||--o{ SUBSCRIPTION : "pays for"
+    HIVE ||--o{ USER : "has members"
+    USER ||--o{ JOURNEY : "progresses through"
+    USER ||--o{ GAME : "plays"
+    USER ||--o{ TRACK_EVENT : "generates"
+```
+
+The full picture, with every entity, relationship, and field-level detail:
+
 ```mermaid
 erDiagram
     VISITOR ||--o| USER : "linked at signup (userId, app-level — no Mongoose ref)"

@@ -35,7 +35,8 @@ it, or make an explicit decision to keep it (unlikely, but possible if something
 undocumented depends on it) and document why. This is the single highest-value thing to verify
 in this whole handover.
 
-**Owner:** whoever gets GCP console access first — David or James, before handover completes.
+**Owner:** David, once he has GCP console access — good first-week task given the potential
+live cost and exposure.
 
 ---
 
@@ -85,15 +86,12 @@ not a dedicated production one. Mailchimp's API key follows the identical
 Atlas cluster/credential, or whether `nh-demo` genuinely is what's in `backend/.env.prod`
 today.
 
-**Next step:** check `backend/.env.prod`'s actual `mongodb_url` against what's in Atlas.
-If it is still `nh-demo` or similarly shared/broad, rotate to a dedicated production
-credential as part of handover, not as an afterthought — this is a credential a departing
-CTO's laptop/history/Slack may have seen copy-pasted, exactly the kind of thing a handover
-should force a rotation of regardless of the deed/security items already in flight.
+**Next step:** check `backend/.env.prod`'s actual `mongodb_url` against what's in Atlas. If it
+is still `nh-demo` or similarly shared/broad, rotate to a dedicated production credential —
+worth doing rather than inheriting a demo-named credential indefinitely.
 
-**Owner:** James, before handover completes (this is a credential-hygiene action alongside
-the PAT/`.env.tmp` items already underway — see the note at the bottom of
-this doc).
+**Owner:** David, once he has Atlas access — credential hygiene, worth an early look but not
+urgent enough to block anything.
 
 ### 5. Two zombie repos in the NumberHive GitHub org, not archived
 
@@ -108,35 +106,41 @@ from a fossil branch believing it's current.
 **Next step:** archive both on GitHub (Settings → Archive repository). This is reversible,
 low-risk, and purely a signal-to-future-readers fix — no code or history changes.
 
-**Owner:** James or David, either can do this in under a minute each.
+**Owner:** David, once he has GitHub org access — trivial, low-risk, whenever it's convenient.
 
-### 6. Access management matrix — genuinely never filled in
+### 6. Access management matrix — has never existed
 
-**What's known:** there has never been a completed access matrix for GCP / GitHub / Pulumi state bucket /
-MongoDB / Stripe / Firebase access. There is currently no
-record of who holds what beyond James.
+**What's known:** there has never been a completed access matrix for GCP / GitHub / Pulumi
+state bucket / MongoDB / Stripe / Firebase access. Access has always been tracked informally
+and held by James — that's simply the current state, not a gap James introduced for this
+handover.
 
-**Next step:** build this fresh as part of handover rather than trying to reconstruct
-history — for each system, list who currently has access, and what David needs granted.
-This is foundational to the handover actually completing (David can't verify #1–#4 above
-without console access to begin with).
+**What handover actually requires:** each of these — GCP console, GitHub org, MongoDB Atlas,
+Stripe, Firebase — granted to David directly. That's the mechanical part of the handover
+itself (and a precondition for David verifying #1–#4 above), not a separate deliverable.
 
-**Owner:** James, as the only person who currently knows the answer.
+**Next step (optional, David's call):** turning that into a standing, documented access matrix
+is a process improvement David may want once he's settled in — not something that needs to
+exist before he can start.
+
+**Owner:** David, if/when he decides it's worth building.
 
 ---
 
 ## Medium — should happen but doesn't block day-to-day operation
 
-### 7. DNS/GoDaddy access — make the informal delegation explicit
+### 7. DNS/GoDaddy access — informal delegation, doesn't yet name David
 
 **What's known:** DNS is currently informally delegated (James → account holder "Chris",
-authority passed via "Fletch"). No documented, explicit arrangement exists.
+authority passed via "Fletch"). No documented, explicit arrangement exists — that's simply how
+it's always worked, not something that changed for this handover.
 
-**Next step:** get David added to the GoDaddy account (or a documented, explicit delegation
-arrangement agreed with Chris) rather than relying on an informal chain that predates this
-handover and doesn't name David at all.
+**Next step:** introduce David into that existing chain — added to the GoDaddy account, or a
+documented arrangement agreed with Chris — since the current one predates him and doesn't name
+him at all.
 
-**Owner:** James, to broker the introduction/access grant.
+**Owner:** James — this is the introduction itself, part of hand-off, not separate cleanup
+work.
 
 ### 8. Cost map needs a fresh pull
 
@@ -200,6 +204,173 @@ team this size, but "what do I do when something breaks at 2am" shouldn't be a b
 
 ---
 
+## New this pass — surfaced while extending `tech-inventory.md` for the Dave handover session
+
+Six items were specifically commissioned to check against code. Three confirm as originally
+framed; three turned out to need correcting once checked against the actual repos — reported
+here as the code actually shows, not as originally assumed, per this handover's citation rule.
+
+### 15. `EventTypePickerModal` sort feature — confirmed develop-only, not on `main`
+
+**What's known:** `number-hive-admin/client/src/components/EventTypePickerModal.tsx` exists on
+both `develop` and `main` (added `main`-side via CHG-4139, commit `c7b2381`, wired into
+`EventsPage` via `6a97ab8`). Two later commits — `50b8eef` ("Sort event-type picker options
+alphabetically") and `bca35c7` ("Fix: sort a copy of options rather than mutating the prop") —
+add alphabetical sorting on top of that. `git branch --contains` confirms both sort commits are
+on `develop` only, not on `main`.
+
+**Why it matters:** low-stakes on its own (a UI sort order), but it's a live example of
+`develop` and `main` having actually diverged in `number-hive-admin` — worth knowing before
+assuming the two branches are in lockstep.
+
+**Next step:** none required — this is a documentation note, not a defect. If/when
+`develop` next promotes to `main` (see [`promotion-runbook.md`](promotion-runbook.md) §3), the
+sort behaviour ships as part of that normal promotion.
+
+**Owner:** David, informational only.
+
+### 16. `viteAllowedHosts` in `number-hive-admin` — confirmed wired in and working, **not** unwired
+
+**What's known:** `client/viteAllowedHosts.ts` is actively imported and used in
+`client/vite.config.ts` (lines 7 and 40), has its own test file
+(`client/src/viteAllowedHosts.test.ts` equivalent), and is documented in both the repo's own
+README and `.env.example` (`VITE_DEV_ALLOWED_HOST`, see
+[`tech-inventory.md`](tech-inventory.md) §8). It was, once, silently dropped by an
+auto-integration — commit `660ddb4`, "Restore Vite dev-server Host allowlist for ripper (lost
+in CHG-3616 integration)" — and deliberately restored afterwards.
+
+**Why it's listed here at all:** an earlier version of this handover's working notes described
+this helper as "committed but unwired." That was checked directly against the code this pass
+and is **not correct** — it's wired in, tested, and documented. The genuinely notable fact is
+the *history*: it was dropped once by an automated integration and had to be manually restored,
+which says something about that integration process rather than about this file's current
+state.
+
+**Next step:** none required for the file itself. Worth a general note (not a specific action)
+that auto-integrations in this repo have, at least once, silently dropped working code —
+something to watch for, not something to fix here.
+
+**Owner:** David, informational only.
+
+### 17. CHG-1577 Stripe admin-config links — confirmed shipped and live, **not** archived/part-built
+
+**What's known:** `feat(CHG-1577): Add "Open in Stripe" links in admin panel` (`94c9565`) and
+`fix(CHG-1577): fix config import in stripe-config resolver and test` (`7ad3578`), both dated
+2026-06-15, are merged into `number-hive-complete`'s `main` and live today as
+`backend/src/graphql/admin/stripe-config/`. The only remnant of the original working branch is
+a stale git worktree, `worktree-chg-1577-stripe-links`, which has not diverged from `main` and
+contains no unique work.
+
+**Why it's listed here at all:** an earlier version of this handover's working notes described
+this as "archived, part-built Stripe configuration work." Checked directly against the code
+this pass — it shipped in full and is live; nothing about it is archived or incomplete.
+
+**Next step:** delete the stale `worktree-chg-1577-stripe-links` worktree — it's safe (no
+unique commits) and its continued presence could otherwise mislead a reader into thinking
+there's unfinished work here.
+
+**Owner:** David, trivial cleanup whenever convenient.
+
+### 18. Constraint-drop script (CHG-2285) — confirm it has actually completed against production
+
+**What's known:** `backend/src/graphql/admin/subscription-sync/subscription-index-migration.ts`
+(design doc: `docs/superpowers/specs/2026-07-04-subscription-index-migration-design.md`) is a
+self-healing script that drops and recreates the `stripeSubscriptionId_1` MongoDB index as
+`unique+sparse`, guarding against duplicate values before doing so. It runs automatically as a
+side effect of a real (non-dry-run) "Run Sync" click in the admin panel's Stripe-sync tooling.
+There is no rollback path once it has run.
+
+**What's not known:** whether this has actually completed successfully against the production
+MongoDB cluster since it shipped (2026-07-04). No execution/verification log was found in this
+repo confirming a production run.
+
+**Why it matters:** if it hasn't run yet, the index may still be in whatever state predates
+this migration, which matters for anyone relying on `stripeSubscriptionId` uniqueness at the DB
+level. If it has run and something went wrong partway, there's no built-in undo.
+
+**Next step:** unverified — confirm with James whether this has been run against production,
+and if so, when and with what result.
+
+**Owner:** David, in the handover session — this is exactly the kind of thing the session
+exists to close out.
+
+### 19. Decimal128/Stripe migration (CHG-2400–2467) — fused into production data; confirm the live backfill actually ran
+
+**What's known:** this migration converted Stripe monetary fields (across `subscriptions`,
+`subscriptioninvoices`, `subscriptioncharges`, `stripecoupons`) to Decimal128 `_USD`-suffixed
+fields, **deleting the old field names from the schemas entirely** — this is not a purely
+additive change. The runbook
+(`docs/superpowers/plans/2026-07-15-stripe-usd-rollout-runbook.md`) is explicit that this is a
+one-way code change: §6 ("Rollback") states in so many words that a bare `git revert` of the
+migration code **does not revert the data** — the old fields are gone from the schema either
+way — and gives the exact per-collection `mongorestore` commands as the actual recovery path,
+keyed to a timestamped backup taken before the live run.
+
+**Why restoring older application code against current data is unsafe:** if a rollback is ever
+attempted by simply reverting to pre-migration application code without also restoring the
+data via `mongorestore`, that older code will be reading for field names
+(e.g. `amount`) that no longer exist in the documents — the data was migrated to the new
+`_USD` Decimal128 field names in place, not duplicated alongside the old ones. **Any future
+rollback of this migration must restore data, not just code.**
+
+**What's not known:** whether the actual production `--live` backfill has run. A
+suggestively-timestamped backup folder exists at
+`backend/backups/stripe-usd-20260715T100905Z/` but **it is empty** — no archive files inside
+it — which is not proof either way (an empty folder is consistent with "the backup step never
+actually wrote anything" or "this is a leftover directory from a dry run"), but it is not
+evidence of a completed live run either.
+
+**Next step:** unverified — confirm with James whether the production `--live` backfill for
+this migration has actually run, and if so, whether the corresponding backup archives exist
+somewhere other than this empty folder.
+
+**Owner:** David, in the handover session — highest-stakes item in this new section, since it
+touches live billing data with a schema-destructive, one-way change.
+
+### 20. "ANALYSER-in-admin" — confirmed independently built, **not** a port of `number-hive-complete`'s Analyser
+
+**What's known:** `number-hive-complete` had an earlier, Mongo-based Analyser feature (CHG-1003,
+started 2026-05-25 — confirming the "May–June" timeframe some working notes referenced).
+`number-hive-admin`'s ANALYSER (CHG-4140 onward, started 2026-08-03) is a **separate, Postgres-based
+build** — there are zero MongoDB references anywhere in `number-hive-admin` (confirmed by
+repo-wide search, and consistent with §3's "MongoDB usage per service" table in
+[`tech-inventory.md`](tech-inventory.md), which lists admin as Postgres-only). Admin's own
+planning docs describe this as new foundational work, citing the older Mongo-based system's
+*scope* only as a sizing reference, not as code being ported.
+
+**Why it's listed here at all:** an earlier version of this handover's working notes described
+admin's ANALYSER as "ported" from `number-hive-complete`'s May–June system. Checked directly
+against the code this pass — it's an independent reimplementation, not a port; no shared code
+exists between the two.
+
+**Next step:** none required — this is a documentation correction, not an action item. Worth
+knowing so nobody goes looking for shared code between the two ANALYSER implementations that
+isn't there.
+
+**Owner:** David, informational only.
+
+### 21. Fragile areas flagged this pass, not elsewhere covered
+
+- **Stripe webhook double-`case` bug** (`invoice.payment_failed` handled twice in
+  `backend/src/utils/stripe.ts`, lines 278 and 339 — the second block is dead code). See
+  [`tech-inventory.md`](tech-inventory.md) §4 for the full event table. Not fixed as part of
+  this handover (documentation only) — worth a real look at which block was meant to be
+  authoritative.
+- **`cancelSubscription()` in `backend/src/utils/stripe.ts` has no confirmed non-test caller.**
+  Possibly dead code, possibly cancellation happens entirely through the Stripe billing portal
+  rather than this app's own code path — unverified, confirm with James.
+- **No distributed lock on `number-hive-complete`'s three in-process `node-cron` jobs**
+  (digest, financial reconciliation, journey-stage sync — see
+  [`tech-inventory.md`](tech-inventory.md) §7). Not an active risk on a single Render instance,
+  but would silently double-fire (e.g. double-pulling Stripe invoices) if ever scaled without
+  adding a lock first.
+- **Temporal's `startScheduledEvent` capability has zero production call sites** found this
+  pass — only referenced from test mocks, despite Temporal being live infrastructure for the
+  70-second disconnect-timeout use case. Not claimed as dead code (a static grep can miss
+  dynamically-started workflows), but worth confirming with James whether anything relies on it.
+
+---
+
 ## Low — real gaps, but low urgency or genuinely a business (not technical) decision
 
 ### 13. Mobile app store listings — pull or leave stale?
@@ -243,4 +414,7 @@ doesn't rediscover them independently:
 
 *Compiled 2026-08-28 alongside [`README.md`](README.md) and [`tech-inventory.md`](tech-inventory.md), as part of the CTO
 handover package. Re-prioritize freely — the ranking here is a starting judgement, not a
-fixed sequence.*
+fixed sequence. Items 15–21 added 2026-08-31 while extending `tech-inventory.md` ahead of the
+Dave handover session — each checked directly against the live repos rather than transcribed
+from working notes; three (16, 17, 20) corrected an earlier assumption once the code was
+actually read.*

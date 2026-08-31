@@ -29,9 +29,16 @@ pattern applies to another.
 git checkout staging
 git merge origin/main
 git push origin staging
-ssh james@onyx '/home/james/numberhive-staging-local/number-hive-complete/deploy-staging-local.sh'
 ```
-This is a **self-hosted Docker Compose deploy**, not Render — see "What triggers the deploy" below.
+As of 2026-08-31, pushing `staging` alone doesn't deploy anywhere the company can reach: the
+actual day-to-day staging deploy target has been a self-hosted Docker Compose box
+(`staging-local.numberhive.org`, run via that box's own `deploy-staging-local.sh`) — this is
+**developer-provided infrastructure and is retired at handover**, not something the incoming
+technical lead inherits access to or should rely on. The company's real staging path going
+forward is Render: two generations of `number-hive-complete` Render staging services exist and
+are currently **suspended**, not deleted (confirmed directly via the Render API, 2026-08-31) —
+un-suspending one of those sets is the actual next step, tracked in
+[`open-items.md`](open-items.md) #3. See "What triggers each deploy" below for the detail.
 
 **Ship a fix to `production` (the only supported path):**
 ```bash
@@ -51,13 +58,17 @@ promotion mechanics.
   backend's own `Dockerfile` **runs `npm run test:unit` as a build step** (`backend/Dockerfile:23`,
   comment: *"if tests fail, the Docker build fails and the deploy is rejected"*) — this is the only
   test gate in the pipeline; there is no separate GitHub Actions CI step.
-- **`staging`** — **NOT Render.** `render.yaml`'s staging service blocks (`numberhive-frontend-staging`,
-  `numberhive-backend-staging`, `numberhive-temporal-staging`, lines 8-121) describe Render services
-  that `STAGING-LOCAL.md:344-356` records were **manually decommissioned on 2026-05-06** ("pushes to
-  `staging` no longer trigger any Render build hook") and replaced with the self-hosted `onyx` box
-  above. **The committed `render.yaml` is one day stale relative to that decommission and was never
-  edited to remove the staging blocks — treat those blocks as dead, pending live confirmation that the
-  services are actually gone from the dashboard.**
+- **`staging`** — **not the day-to-day path today.** `render.yaml`'s staging service blocks
+  (`numberhive-frontend-staging`, `numberhive-backend-staging`, `numberhive-temporal-staging`, lines
+  8-121) describe Render services that `STAGING-LOCAL.md:344-356` records as "manually decommissioned
+  on 2026-05-06" ("pushes to `staging` no longer trigger any Render build hook"), with day-to-day
+  staging moved to the self-hosted Docker Compose box referenced above. **That "decommissioned"
+  framing is corrected as of 2026-08-31: queried directly via the Render API, these staging services
+  (and a second, newer-named generation alongside them) still exist — they were never deleted, only
+  `suspended`.** "Decommissioned" in `STAGING-LOCAL.md` evidently meant "stopped being the thing we
+  push to," not "torn down." See [`../architecture/environment-urls.md`](../architecture/environment-urls.md)
+  §2 and [`open-items.md`](open-items.md) #3 for the full resolution — un-suspending one of these two
+  service sets, not recreating anything, is what makes `staging` a real deploy target again.
 - Only one GitHub Actions workflow exists in the repo, `backend/.github/workflows/create-release.yml`
   — triggers on branches named `build/x.y.z`, opens a PR into `staging`. No `build/x.y.z` branch has
   ever existed in this repo's history; **this workflow is vestigial and does not fire in practice.**
@@ -66,8 +77,10 @@ promotion mechanics.
 **How to verify:**
 - Production: `docs/SHIPPING.md`'s ship log records a specific smoke-test per ship (health endpoint,
   key GraphQL query) — follow the pattern of the most recent entry.
-- Staging (onyx): `deploy-staging-local.sh` itself runs a GraphQL smoke check after `docker compose up`
-  (script, final lines).
+- Staging (developer-provided Docker Compose box, retired at handover): `deploy-staging-local.sh`
+  itself runs a GraphQL smoke check after `docker compose up` (script, final lines). Once Render
+  staging is un-suspended (see above), verify the same way as production — health endpoint + a key
+  GraphQL query — there is no separate documented smoke-test procedure for it yet.
 
 **Rollback:** `docs/SHIPPING.md:132-146` — standard rollback is
 `git revert <hotfix-sha> --no-edit && git push origin HEAD:production`, target window **under 5
@@ -292,9 +305,11 @@ exist yet). Do not extrapolate one repo's pattern onto another.
    in this repo's section of this runbook can be trusted as "live behaviour" until this is answered —
    currently it is genuinely unknown from the repo alone whether pushing to `main` deploys anything at
    all.
-2. **`number-hive-complete`: do the Render staging services in `render.yaml` (lines 8-121) still exist
-   in the dashboard?** `STAGING-LOCAL.md` records their decommission on 2026-05-06, one day after the
-   file's last edit; if they're gone, that section of `render.yaml` should be deleted, not just ignored.
+2. **`number-hive-complete`: un-suspend one of the two Render staging service sets in `render.yaml`
+   (lines 8-121).** Already resolved as of 2026-08-31 (queried directly via the Render API, not just
+   the dashboard): despite `STAGING-LOCAL.md`'s "decommissioned" language, both generations still
+   exist, just suspended — nothing needs recreating. This is now an action item, not an open
+   question — see [`open-items.md`](open-items.md) #3.
 3. **`number-hive-complete` and `number-hive-newvis`: confirm actual `autoDeploy` setting and branch
    wiring for every Render service** — neither `render.yaml` sets the key explicitly in either repo, so
    both are 100% dependent on dashboard configuration/history that isn't visible from the repo.

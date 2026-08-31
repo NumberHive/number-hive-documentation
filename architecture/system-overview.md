@@ -7,20 +7,19 @@ it lives in, and which ADR governs its relationship to the others.
 
 For any decision that crosses one of these boundaries, write (or update) an ADR in
 `number-hive-complete/docs/adr/` (ADRs for the free-game ↔ school-product pair and the
-admin/amber split remain authoritative there — see that repo's ADR-001 amendment and this
+admin split remain authoritative there — see that repo's ADR-001 amendment and this
 repo's README for the reasoning on what stays put vs. what belongs here), regardless of which
 repo the change actually lands in.
 
 ---
 
-## The four areas
+## The three areas
 
 | Area | Repo | Status | What it is |
 |---|---|---|---|
-| **School product** | `number-hive-complete` | Live | The paid educational product — GraphQL/MongoDB/Temporal backend, React Native Web frontend. Also currently contains company-operations admin tooling (see below — slated for extraction). |
-| **Free game** | `number-hive-newvis` (sibling repo) | In development | Public, free-to-play PWA — the "front door" funnel into the school product. Phaser 3 / TypeScript / Fastify / MongoDB. Deployed at `nhvis.puddicombe.com`; targeting `game.numberhive.app`. |
-| **Company operations / admin** | `number-hive-admin` (sibling repo — created, in development) | In development | Billing/subscriptions (Stripe), customer/organisation records, user administration, projects/tasks — **the billing/subscription data itself hasn't migrated yet**; still lives *inside* `number-hive-complete` (`backend/src/graphql/admin/`, `frontend/.../AdminPanel/`) pending that work. What's real in the new repo as of 2026-08-02: Google OAuth sign-in, an RBAC/access-control model, an audit log, entitlement-push scaffolding (ADR-005), and a shipped events-browsing feature mirroring `number-hive-newvis`'s event stream into an `fg_events` table on the same Admin Postgres database (moved off an earlier dev-only ClickHouse store, CHG-4093) — see `docs/conventions/cross-repo-data-push.md`. |
-| **Amber** | `amber` (sibling repo) | Early / shell stage | NumberHive's AI staff-member product — persona-scoped PWA. Consumes company data via a scoped, auditable API once `number-hive-admin` exists; does not hold billing/customer data itself. |
+| **School product (Number Hive Education)** | `number-hive-complete` | Live | The paid educational product — GraphQL/MongoDB/Temporal backend, React Native Web frontend. Also currently contains company-operations admin tooling (see below — slated for extraction). |
+| **Free game (Number Hive Arcade)** | `number-hive-newvis` (sibling repo) | **Deployed, live at `game.numberhive.app`** — currently in friends-and-family testing, not yet publicly launched (confirmed via the Render API and DNS, 2026-08-31) | Public, free-to-play PWA — the "front door" funnel into the school product. Phaser 3 / TypeScript / Fastify / MongoDB. |
+| **Company operations / admin** | `number-hive-admin` (sibling repo — created, in development) | Deployed and running on Render (branch `main`, auto-deploy on) but not yet reachable at `admin.numberhive.org` — that DNS name isn't wired to Render (parked GoDaddy IP, expired TLS cert), confirmed 2026-08-31 | Billing/subscriptions (Stripe), customer/organisation records, user administration, projects/tasks — **the billing/subscription data itself hasn't migrated yet**; still lives *inside* `number-hive-complete` (`backend/src/graphql/admin/`, `frontend/.../AdminPanel/`) pending that work. What's real in the new repo as of 2026-08-02: Google OAuth sign-in, an RBAC/access-control model, an audit log, entitlement-push scaffolding (ADR-005), and a shipped events-browsing feature mirroring `number-hive-newvis`'s event stream into an `fg_events` table on the same Admin Postgres database (moved off an earlier dev-only ClickHouse store, CHG-4093) — see `docs/conventions/cross-repo-data-push.md`. |
 
 ---
 
@@ -30,9 +29,8 @@ repo the change actually lands in.
 |---|---|---|
 | School/game accounts, hives, journeys, gameplay | `number-hive-complete` | — |
 | Free-game player/session data | `number-hive-newvis` | — (correlated with school signups via a handoff key at conversion, not shared storage — see `number-hive-complete/docs/adr/001-free-game-infrastructure.md`) |
-| Subscriptions, billing, customer/org records, projects/tasks | `number-hive-admin` (repo exists; data itself still: `number-hive-complete`, pending migration) | `number-hive-complete` (entitlement projection only, via event push), `amber` (scoped read API) |
+| Subscriptions, billing, customer/org records, projects/tasks | `number-hive-admin` (repo exists; data itself still: `number-hive-complete`, pending migration) | `number-hive-complete` (entitlement projection only, via event push) |
 | Free-game analytics events (mirrored copy, not the source of truth) | `number-hive-admin` — an `fg_events` table on its own Postgres DB, mirroring `number-hive-newvis`'s event stream, pushed cross-repo (shipped to production 2026-08-02; storage moved from an earlier dev-only ClickHouse store to Postgres via CHG-4093, same day) | — internal admin dashboard only, so far |
-| Amber's own working data (chat state, notes, approvals she generates) | `amber` | — |
 
 **One writer per data domain.** No service reaches directly into another's database. See
 `number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md` for
@@ -49,9 +47,8 @@ tracked event feeding these flows should also carry build-time deployment metada
 
 | Boundary | Decision | Governing ADR |
 |---|---|---|
-| `number-hive-complete` vs. `number-hive-newvis` (free game) | Separate repos, separate databases, same Atlas project; correlate via handoff key, not shared storage | [ADR-001](../../number-hive-complete/docs/adr/001-free-game-infrastructure.md) *(in `number-hive-complete`)* |
-| `number-hive-complete` vs. `number-hive-admin` (company ops) | Extract admin into a new, separate repo/service; `number-hive-complete` gets a local entitlement projection via event push, not a live API call or shared DB | [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) *(in `number-hive-complete`)* |
-| Amber vs. `number-hive-admin` | Amber stays a peer API consumer with scoped credentials; not fused into a single "NumberHive OS" | [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) *(in `number-hive-complete`)* |
+| `number-hive-complete` vs. `number-hive-newvis` (free game) | Separate repos, separate databases, same Atlas project; correlate via handoff key, not shared storage | [ADR-001](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/001-free-game-infrastructure.md) *(in `number-hive-complete`)* |
+| `number-hive-complete` vs. `number-hive-admin` (company ops) | Extract admin into a new, separate repo/service; `number-hive-complete` gets a local entitlement projection via event push, not a live API call or shared DB | [ADR-005](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) *(in `number-hive-complete`)* |
 
 See also [`subdomain-map.md`](subdomain-map.md) in this repo for how these areas map to actual
 subdomains, and the current state of cross-property visitor tracking; and
@@ -73,7 +70,7 @@ above before assuming something has been built.
 ## Migration note
 
 This document previously lived at `number-hive-complete/docs/SYSTEM-OVERVIEW.md`. It was
-moved here because it describes the whole ecosystem (all four areas, cross-repo data
+moved here because it describes the whole ecosystem (all three areas, cross-repo data
 ownership, repo boundaries) rather than anything scoped to the school product or to the
 free-game/school-product pair specifically — squarely this repo's charter per its README.
 The ADRs it references (001–005) are **not** moving — those stay authoritative in

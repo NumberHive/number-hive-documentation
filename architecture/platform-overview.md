@@ -33,7 +33,7 @@ flowchart TB
         PlayFE --> PlayAPI --> SchoolDB
     end
 
-    subgraph AdminArea["Company Ops / Admin — admin.numberhive.org (planned; dev today on personally-hosted infrastructure)\nnumber-hive-admin"]
+    subgraph AdminArea["Company Ops / Admin — deployed on Render, admin.numberhive.org not yet wired\n(confirmed via Render API + DNS/TLS check, 2026-08-31)\nnumber-hive-admin"]
         AdminFE["Admin UI\n(billing/CRM screens: still bundled inside play's frontend today)"]
         AdminAPI["Admin API\n(sign-in/RBAC/audit/entitlement-push: real;\nbilling/CRM: still bundled inside play's backend today)"]
         AdminDB[("Admin Postgres\nsubscriptions, billing, customers, orgs\n(schema real; billing/CRM data not yet migrated)\n+ fg_events table — events mirror, live since 2026-08-02")]
@@ -81,7 +81,7 @@ environments of its own, so there's no continuously-live production path yet. Se
 |---|---|---|---|
 | **Traffic profile** | High-volume, spiky, viral by design | Steady, school-hours patterns, paying customers | Low-volume, internal, staff-only |
 | **Data sensitivity** | Anonymous by design — no PII, COPPA / UK Children's Code | Student data — FERPA, GDPR, UK Children's Code **under school consent** | Billing, customer PII, org records |
-| **Repo** | `number-hive-newvis` | `number-hive-complete` | `number-hive-admin` (created, in development) |
+| **Repo** | `number-hive-newvis` | `number-hive-complete` | `number-hive-admin` (deployed on Render — branch `main`, auto-deploy on, not suspended; `admin.numberhive.org` itself not yet wired — parked GoDaddy IP, expired TLS cert, confirmed 2026-08-31) |
 | **Database** | `free_game` (separate Atlas DB) | `school_hive` (separate Atlas DB) | Own Postgres (real) — including an `fg_events` events-mirror table, live since 2026-08-02 — billing/CRM data itself still lives in `school_hive` pending migration |
 | **Why separated** | A viral traffic spike must never degrade the paying school product; different compliance regime entirely | — | A bug/breach in the public site currently shares blast radius with billing/PII because it's the same schema/DB/deploy today |
 

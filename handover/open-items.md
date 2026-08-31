@@ -13,6 +13,59 @@ Each item states what's known, what's not, and a concrete next step — not just
 
 ## Critical — live cost or live exposure, unconfirmed either way
 
+### 22. `remove-user-from-hive` — teacher role check without hive-ownership check
+
+**What's known:**
+`backend/src/graphql/hive/remove-user-from-hive/remove-user-from-hive.service.ts` (line 11)
+only checks that the requesting user's `userType === TEACHER` before removing a student from a
+Hive — it does not check that the requesting teacher actually owns (`Hive.ownerId`) the specific
+Hive the student is being removed from. Every other Hive-mutating path checked during this pass
+(e.g. `hive-users.service.ts`) does enforce ownership, which makes this one read like an
+oversight rather than a deliberate decision. Found while writing
+[`access-model.md`](access-model.md) §1 (2026-08-31) — not fixed as part of this handover
+(documentation only).
+
+**Next step:** add an `ownerId` check (mirroring the pattern already used in
+`hive-users.service.ts`) before this ships to a wider admin surface, or confirm with the
+Education team whether there's a reason it's intentionally permissive.
+
+**Owner:** David, early — low effort, plausible real gap.
+
+---
+
+### 23. Journey resolvers — no ownership check on any client-supplied ID (more severe than #22)
+
+**What's known:** `backend/src/graphql/journey/journey.resolver.ts` guards every method with
+`@Authorized()` only (authentication, not ownership — see `access-model.md` §1 for what that
+decorator does and doesn't check). Seven of its methods accept a client-supplied ID
+(`userId`, `id`, or `journeyId`) and perform the corresponding read/write/delete with **no check
+that the ID belongs to the requesting user** (`context.userId`) or any other ownership/membership
+relation:
+- `journeysByUser` (line 29) — returns any user's full Journey list, given their `userId`.
+- `journeyByUserAndGametype` (line 35) — same, scoped to one game type.
+- `updateJourney` (line 47) — updates any Journey document by its `id`, arbitrary fields.
+- `deleteJourney` (line 68) — deletes any Journey document by its `id`.
+- `upsertJourney` (line 77) — creates or overwrites any user's Journey, given their `userId`.
+- `addJourneyHistory` (line 98) — appends a history entry to any Journey by its `journeyId`.
+- `upsertJourneyHistory` (line 108) — same, upsert form.
+
+Confirmed by direct reading of the full resolver file (not inferred from a partial search) —
+every affected method was read line-by-line on 2026-08-31. Unlike #22, this isn't scoped to Hive
+membership at all: any authenticated user, student or teacher, can read, overwrite, or delete any
+other user's Journey progression data system-wide. Found while writing
+[`access-model.md`](access-model.md) §1 (2026-08-31) — not fixed as part of this handover
+(documentation only).
+
+**Next step:** add an ownership check (`userId === context.userId`, or a lookup joining `id`/
+`journeyId` back to `context.userId` for the methods that don't take `userId` directly) to all
+seven methods before this ships to a wider surface. Given the blast radius (arbitrary read/write/
+delete of any user's data, not just a Hive-scoped removal), this reads as higher priority than
+#22 above.
+
+**Owner:** David, urgent — recommend triaging before other Education-side work.
+
+---
+
 ### 1. Is the GCP/GKE/Pulumi infrastructure actually torn down?
 
 **What's known:** the Kubernetes/Pulumi backend architecture (VPC, private GKE cluster, 3
@@ -243,8 +296,8 @@ README and `.env.example` (`VITE_DEV_ALLOWED_HOST`, see
 auto-integration — commit `660ddb4`, "Restore Vite dev-server Host allowlist for ripper (lost
 in CHG-3616 integration)" — and deliberately restored afterwards.
 
-**Why it's listed here at all:** an earlier version of this handover's working notes described
-this helper as "committed but unwired." That was checked directly against the code this pass
+**Why it's listed here at all:** earlier working notes assumed
+this helper was "committed but unwired." That was checked directly against the code this pass
 and is **not correct** — it's wired in, tested, and documented. The genuinely notable fact is
 the *history*: it was dropped once by an automated integration and had to be manually restored,
 which says something about that integration process rather than about this file's current
@@ -265,8 +318,8 @@ something to watch for, not something to fix here.
 a stale git worktree, `worktree-chg-1577-stripe-links`, which has not diverged from `main` and
 contains no unique work.
 
-**Why it's listed here at all:** an earlier version of this handover's working notes described
-this as "archived, part-built Stripe configuration work." Checked directly against the code
+**Why it's listed here at all:** earlier working notes assumed
+this was "archived, part-built Stripe configuration work." Checked directly against the code
 this pass — it shipped in full and is live; nothing about it is archived or incomplete.
 
 **Next step:** delete the stale `worktree-chg-1577-stripe-links` worktree — it's safe (no
@@ -348,8 +401,8 @@ repo-wide search, and consistent with §3's "MongoDB usage per service" table in
 planning docs describe this as new foundational work, citing the older Mongo-based system's
 *scope* only as a sizing reference, not as code being ported.
 
-**Why it's listed here at all:** an earlier version of this handover's working notes described
-admin's ANALYSER as "ported" from `number-hive-complete`'s May–June system. Checked directly
+**Why it's listed here at all:** earlier working notes assumed
+admin's ANALYSER was "ported" from `number-hive-complete`'s May–June system. Checked directly
 against the code this pass — it's an independent reimplementation, not a port; no shared code
 exists between the two.
 
@@ -387,57 +440,6 @@ isn't there.
   result — it's possible for a workflow to be started in a way a grep can't see — so it's
   reported as "no call site found," not "confirmed dead code." Worth a quick confirmation with
   whoever wrote it if there's any doubt before removing it.
-
-### 22. `remove-user-from-hive` — teacher role check without hive-ownership check
-
-**What's known:**
-`backend/src/graphql/hive/remove-user-from-hive/remove-user-from-hive.service.ts` (line 11)
-only checks that the requesting user's `userType === TEACHER` before removing a student from a
-Hive — it does not check that the requesting teacher actually owns (`Hive.ownerId`) the specific
-Hive the student is being removed from. Every other Hive-mutating path checked during this pass
-(e.g. `hive-users.service.ts`) does enforce ownership, which makes this one read like an
-oversight rather than a deliberate decision. Found while writing
-[`access-model.md`](access-model.md) §1 (2026-08-31) — not fixed as part of this handover
-(documentation only).
-
-**Next step:** add an `ownerId` check (mirroring the pattern already used in
-`hive-users.service.ts`) before this ships to a wider admin surface, or confirm with the
-Education team whether there's a reason it's intentionally permissive.
-
-**Owner:** David, early — low effort, plausible real gap.
-
----
-
-### 23. Journey resolvers — no ownership check on any client-supplied ID (more severe than #22)
-
-**What's known:** `backend/src/graphql/journey/journey.resolver.ts` guards every method with
-`@Authorized()` only (authentication, not ownership — see `access-model.md` §1 for what that
-decorator does and doesn't check). Seven of its methods accept a client-supplied ID
-(`userId`, `id`, or `journeyId`) and perform the corresponding read/write/delete with **no check
-that the ID belongs to the requesting user** (`context.userId`) or any other ownership/membership
-relation:
-- `journeysByUser` (line 29) — returns any user's full Journey list, given their `userId`.
-- `journeyByUserAndGametype` (line 35) — same, scoped to one game type.
-- `updateJourney` (line 47) — updates any Journey document by its `id`, arbitrary fields.
-- `deleteJourney` (line 68) — deletes any Journey document by its `id`.
-- `upsertJourney` (line 77) — creates or overwrites any user's Journey, given their `userId`.
-- `addJourneyHistory` (line 98) — appends a history entry to any Journey by its `journeyId`.
-- `upsertJourneyHistory` (line 108) — same, upsert form.
-
-Confirmed by direct reading of the full resolver file (not inferred from a partial search) —
-every affected method was read line-by-line on 2026-08-31. Unlike #22, this isn't scoped to Hive
-membership at all: any authenticated user, student or teacher, can read, overwrite, or delete any
-other user's Journey progression data system-wide. Found while writing
-[`access-model.md`](access-model.md) §1 (2026-08-31) — not fixed as part of this handover
-(documentation only).
-
-**Next step:** add an ownership check (`userId === context.userId`, or a lookup joining `id`/
-`journeyId` back to `context.userId` for the methods that don't take `userId` directly) to all
-seven methods before this ships to a wider surface. Given the blast radius (arbitrary read/write/
-delete of any user's data, not just a Hive-scoped removal), this reads as higher priority than
-#22 above.
-
-**Owner:** David, urgent — recommend triaging before other Education-side work.
 
 ---
 

@@ -81,6 +81,7 @@ tracked in `open-items.md` rather than a row here.
 | Render setup and services | [`tech-inventory.md`](tech-inventory.md) |
 | MongoDB | [`tech-inventory.md`](tech-inventory.md) |
 | Stripe / billing | [`tech-inventory.md`](tech-inventory.md), plus [`open-items.md`](open-items.md) #18–19 for the two live migration/data-integrity questions |
+| Subscription lifecycle — what makes a hive paid, what `Hive.paymentStatus` gates, and the ADR-005 entitlement-push direction | [`access-model.md`](access-model.md) §1, "Subscription lifecycle: Stripe as the system of record" |
 | Third-party services | [`tech-inventory.md`](tech-inventory.md) |
 | Async Arcade architecture | [`async-arcade-architecture.md`](async-arcade-architecture.md) |
 | Analytics / event tracking | [`analytics-inventory.md`](analytics-inventory.md) |

@@ -132,19 +132,23 @@ event types (line numbers as of this pass):
 
 **Bug found this pass:** `invoice.payment_failed` is a `case` twice (line 278 and line 339).
 JavaScript `switch` statements match the first matching case top-to-bottom, so the block at
-line 339 is dead code — unreachable for that event. Not fixed as part of this handover (out of
-scope — documentation only); flagged here and in [`open-items.md`](open-items.md) as a
-"confirm with James / worth a real fix" item, since it's not obvious from a glance which of the
-two blocks was intended to be authoritative.
+line 339 is dead code — unreachable for that event. Resolved by evidence in
+[`open-items.md`](open-items.md) #21: the first block (line 278) always wins; the second
+(line 339) is genuinely unreachable dead code, not a merge artifact — it was added later, in a
+separate commit (`fc3f1630`, CHG-1917, 2026-06-24). Not fixed as part of this handover (out of
+scope — documentation only); the dead second block should simply be deleted, there's no remaining
+ambiguity about which is authoritative.
 
 **Other Stripe surfaces:**
 - Checkout sessions are created with dynamic `price_data` (no pre-created Stripe `Price` objects
   in the Stripe dashboard) — pricing lives in this repo's code, not in Stripe's product catalog.
 - Billing portal access via `createPortalSession` (same file).
 - `cancelSubscription()` exists in `backend/src/utils/stripe.ts` but no non-test call site was
-  found this pass — possibly dead code, possibly cancellation is handled a different way (e.g.
-  directly through the Stripe billing portal rather than this app's own code path). Flagged as
-  "confirm with James" in [`open-items.md`](open-items.md) rather than assumed dead.
+  found this pass. Confirmed dead code per [`open-items.md`](open-items.md) #21: zero callers
+  anywhere in the backend or frontend, and no GraphQL mutation exposes it. Subscription
+  cancellation actually happens entirely through Stripe's hosted billing portal
+  (`createPortalSession`, which *is* wired up and used), not through this app's own code path.
+  Safe to delete, or leave as documented dead code; not an active risk either way.
 - The CHG-1577 admin-facing Stripe-config UI (subscription/price lookups for support/ops use) is
   separate, live code — see [`open-items.md`](open-items.md) for its status.
 

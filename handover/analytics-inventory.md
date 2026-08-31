@@ -64,6 +64,12 @@ with `sessionId:'server'`/`appVersion:'server'`.
 
 ### A.3 How Arcade events are read/consumed
 
+**Where a person actually reads these today:** `number-hive-admin`'s `client/src/pages/EventsPage.tsx`
+(paired with `EventTypePickerModal.tsx`) is the one live UI — it reads the mirrored `fg_events`
+table on Admin's own Postgres database (see [`system-overview.md`](../architecture/system-overview.md)),
+not `number-hive-newvis`'s database directly. There is no other dashboard anywhere in either
+repo today.
+
 - **No dashboard or aggregation UI exists inside `number-hive-newvis` itself.**
 - `backend/src/lib/eventsPushWorker.js` pushes **every** unsent `fg_events` row (no `eventName`
   filter — confirmed by reading the query, `find({_id:{$gt:cursor}}).sort({_id:1}).limit(batchSize)`)
@@ -121,6 +127,14 @@ for one cohort; 1 (Bumble completion) would be new work.**
 ## Part B — Number Hive Education (`number-hive-complete`)
 
 ### B.1 How tracking works
+
+**Where a person actually reads these today:** the admin panel's own `Analytics.tsx` screen
+(`frontend/src/components/screens/AdminPanel/Analytics.tsx`, inside `number-hive-complete` —
+still bundled into the main app's frontend, not yet split into `number-hive-admin`, see
+[`system-overview.md`](../architecture/system-overview.md)), which calls the three GraphQL
+queries listed in the table below (`adminTrackFunnelStats`/`adminVisitorStats`/
+`adminAcquisitionStats`). There is no separate dashboard tool — this screen is the only live
+consumer.
 
 A first-party system, no third-party analytics SDK on the frontend (checked `frontend/package.json`
 and grepped for `gtag`/`dataLayer`/`googletagmanager`/Segment/Amplitude/PostHog — none found).
@@ -197,17 +211,23 @@ literally, this section corrects that.
 
 ---
 
-## Summary — confirm-with-James markers in this document
+## Summary — resolved markers in this document
 
-1. **§A.3** — whether the admin-side event-name whitelist gap described in
-   `number-hive-newvis/docs/ANALYTICS_ROADMAP.md` (CHG-4180/CHG-4171) was since removed from
-   `number-hive-admin`'s code, or whether that roadmap entry was never accurate against what
-   shipped. Current admin code has no such whitelist.
-2. **§A.4** — `promo.bee_cta_tapped`: documented as live with a specific call site that doesn't
-   exist in current code. Not investigated further than confirming the discrepancy.
+1. **§A.3 — resolved 2026-08-31.** Searched `number-hive-admin`'s full git history for
+   CHG-4180/CHG-4171 (the admin-side event-name whitelist the roadmap describes as blocking
+   `engagement.funnel_stage`/`retention.checked_in`/`ai.game_summary`): **no trace of it
+   anywhere** — it was never implemented, not removed after the fact. The
+   `ANALYTICS_ROADMAP.md` entry was never accurate against shipped code, not stale relative to
+   a real removal.
+2. **§A.4 — resolved 2026-08-31.** `promo.bee_cta_tapped` is catalogued but has not actually
+   been emitted since commit `902c6ff` (2026-07-27) removed its only call site; that call site
+   was itself added in `e91ad6d` (2026-07-18) and lived for about 9 days before removal. So this
+   is real drift from a genuine refactor, not a documentation error that was never true — the
+   event *was* live briefly, then quietly stopped firing when its call site was removed without
+   updating the catalog.
 
-No other item in this document required a "confirm with James" marker — every other exists/
-partial/new-work classification was resolved directly from source.
+No other item in this document required further confirmation — every other exists/partial/
+new-work classification was resolved directly from source.
 
 ---
 

@@ -69,6 +69,33 @@ duplicated them here:
 
 ---
 
+## Where it lives
+
+A direct index from what the company asked this handover to cover to the document that actually
+answers it — rows only for things that have a document; where nothing exists yet, that's a gap
+tracked in `open-items.md` rather than a row here.
+
+| The company asked about | Where it lives |
+|---|---|
+| Operating and deploying Arcade + Education | [`promotion-runbook.md`](promotion-runbook.md) |
+| Render setup and services | [`tech-inventory.md`](tech-inventory.md) |
+| MongoDB | [`tech-inventory.md`](tech-inventory.md) |
+| Stripe / billing | [`tech-inventory.md`](tech-inventory.md), plus [`open-items.md`](open-items.md) #18–19 for the two live migration/data-integrity questions |
+| Third-party services | [`tech-inventory.md`](tech-inventory.md) |
+| Async Arcade architecture | [`async-arcade-architecture.md`](async-arcade-architecture.md) |
+| Analytics / event tracking | [`analytics-inventory.md`](analytics-inventory.md) |
+| Known launch blockers | [`launch-readiness-notes.md`](launch-readiness-notes.md) |
+| Unfinished work | [`open-items.md`](open-items.md) |
+| Fragile areas | [`open-items.md`](open-items.md) #21 |
+| Security remediation status | [`security-remediation-status.md`](security-remediation-status.md) |
+| Launch Brief §1 (Arcade) and §2 (Education) | [`launch-readiness-notes.md`](launch-readiness-notes.md) |
+| Launch Brief §4 outcome | Not a document — this is a decision, not a fact to look up; answered by the incoming technical lead after the session |
+
+Plane work history was also asked about; no document in this repo covers it, so there's no row
+for it here rather than a row pointing nowhere.
+
+---
+
 ## What NumberHive is
 
 **Number Hive Education**, the paid product for schools, plus **Number Hive Arcade**, a free

@@ -82,10 +82,10 @@ repo today.
   whitelist in current admin code.** This corrects `number-hive-newvis/docs/ANALYTICS_ROADMAP.md`,
   which describes specific events (`engagement.funnel_stage`, `retention.checked_in`,
   `ai.game_summary`) as blocked by an admin-side whitelist gap (tracked there as CHG-4180/
-  CHG-4171) — that whitelist mechanism does not exist in the admin code as it stands today, so
-  either it was removed since that roadmap entry was written, or the roadmap entry was never
-  accurate against shipped code. **Unverified: confirm with James** which of the two it is; this
-  document reports what the code shows now, not the history.
+  CHG-4171) — that whitelist mechanism does not exist in the admin code as it stands today.
+  **Resolved 2026-08-31:** a full search of `number-hive-admin`'s git history found no trace of
+  this whitelist ever having been implemented (see Summary below) — the roadmap entry was never
+  accurate against shipped code, not stale relative to a real removal.
 - `docs/analysis-process.md` (newvis) documents `fg_events` (product/growth) and
   `fg_system_events` (ops/security) as deliberately separate stores, "do not join or blend the
   two." It also records that no scoped read-only Atlas user exists yet for either collection,

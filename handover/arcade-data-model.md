@@ -249,13 +249,13 @@ migration risk that applies to Education's subscription/billing data.
 - **Field-level shape of every collection** — see
   [`../architecture/database-schema-free-game.md`](../architecture/database-schema-free-game.md),
   which this document deliberately does not duplicate.
-- **The full `eventName`→`props` analytics taxonomy** — covered in the pending
-  `handover/analytics-inventory.md` (next in this handover's build order), not here.
+- **The full `eventName`→`props` analytics taxonomy** — covered in
+  [`analytics-inventory.md`](analytics-inventory.md), not here.
 - **Concurrency-cap value and enforcement mechanics beyond what's needed to explain the queue
   lifecycle in §1.2** — the concurrency cap itself (`backend/src/lib/concurrencyCap.js`),
   the queue-on-cap invite flow in full, guest-vs-account behaviour, and "Your Turn" surfacing
-  belong in the pending `handover/async-arcade-architecture.md`, which will cross-link back here
-  for the data side rather than repeat it.
+  belong in [`async-arcade-architecture.md`](async-arcade-architecture.md), which cross-links
+  back here for the data side rather than repeating it.
 - **Whether ADR-003 Rule 1's frozen localStorage keys are still honoured in current frontend
   code** — noted as out of scope in §3, not verified here.
 

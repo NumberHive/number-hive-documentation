@@ -47,8 +47,8 @@ tracked event feeding these flows should also carry build-time deployment metada
 
 | Boundary | Decision | Governing ADR |
 |---|---|---|
-| `number-hive-complete` vs. `number-hive-newvis` (free game) | Separate repos, separate databases, same Atlas project; correlate via handoff key, not shared storage | [ADR-001](../../number-hive-complete/docs/adr/001-free-game-infrastructure.md) *(in `number-hive-complete`)* |
-| `number-hive-complete` vs. `number-hive-admin` (company ops) | Extract admin into a new, separate repo/service; `number-hive-complete` gets a local entitlement projection via event push, not a live API call or shared DB | [ADR-005](../../number-hive-complete/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) *(in `number-hive-complete`)* |
+| `number-hive-complete` vs. `number-hive-newvis` (free game) | Separate repos, separate databases, same Atlas project; correlate via handoff key, not shared storage | [ADR-001](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/001-free-game-infrastructure.md) *(in `number-hive-complete`)* |
+| `number-hive-complete` vs. `number-hive-admin` (company ops) | Extract admin into a new, separate repo/service; `number-hive-complete` gets a local entitlement projection via event push, not a live API call or shared DB | [ADR-005](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/005-numberhive-admin-separation-and-amber-data-access.md) *(in `number-hive-complete`)* |
 
 See also [`subdomain-map.md`](subdomain-map.md) in this repo for how these areas map to actual
 subdomains, and the current state of cross-property visitor tracking; and

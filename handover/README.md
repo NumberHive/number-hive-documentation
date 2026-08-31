@@ -45,19 +45,37 @@ duplicated them here:
 
 ## What NumberHive is
 
-An educational product for schools (the paid "school product") plus a free public game that
-funnels into it, plus emerging internal company-ops tooling. Not one application — a small
-family of repos, each owning its own data, talking to each other over defined APIs/event
-pushes rather than sharing databases. [`system-overview.md`](../architecture/system-overview.md) is the authoritative map; the
+**Number Hive Education**, the paid product for schools, plus **Number Hive Arcade**, a free
+public game that funnels into it, plus emerging internal company-ops tooling. Not one
+application — a small family of repos, each owning its own data, talking to each other over
+defined APIs/event pushes rather than sharing databases. See the glossary below for how the
+product names map onto the terms actually used in code and in the other docs.
+[`system-overview.md`](../architecture/system-overview.md) is the authoritative map; the
 one-paragraph version:
 
 | Area | Repo | Status |
 |---|---|---|
-| School product (the paid app) | `number-hive-complete` | **Live** — this is the main live system |
-| Free game | `number-hive-newvis` | Live, in active development |
-| Company operations / admin | `number-hive-admin` | In development — only Google OAuth sign-in and an events mirror are live so far; billing/customer data hasn't migrated out of `number-hive-complete` yet |
+| Number Hive Education (the paid app) | `number-hive-complete` | **Live** — this is the main live system |
+| Number Hive Arcade (the free game) | `number-hive-newvis` | Deployed, live at `game.numberhive.app` — currently in friends-and-family testing, not yet publicly launched |
+| Company operations / admin | `number-hive-admin` | Deployed and running on Render (service `number-hive-admin`, branch `main`, auto-deploy on, not suspended — confirmed via the Render API) at its Render-issued URL; **`admin.numberhive.org` itself is not yet wired to it** — that DNS name still resolves to a parked GoDaddy IP with an expired TLS certificate, not Render. Functionally, only Google OAuth staff sign-in and the `fg_events` analytics mirror are live; billing/customer data hasn't migrated out of `number-hive-complete` yet |
 | Marketing site (`www`) | Not a NumberHive repo | Live — WordPress, externally hosted |
 | Ecosystem documentation (this repo) | `number-hive-documentation` | Cross-repo architecture, conventions, and (as of this handover) onboarding docs |
+
+## Glossary — code terms vs. product terms
+
+The product has its own external vocabulary that doesn't always match the internal code/ticket
+language. This maps one to the other, with where each lives in code:
+
+| Product term | Code term(s) | Where it lives |
+|---|---|---|
+| Altitude | `HIQ` / `HiveIQ` (NumberHive Rating) | The scoring engine actually lives in `number-hive-newvis`, not `number-hive-complete` — `src/scoring/Hiq.ts`, `src/scoring/HiqProfile.ts`, backend `backend/src/lib/hiqSeed.js`/`hiqPvp.js`/`hiqDeltaBound.js`, route `backend/src/routes/progression.js`. Design spec sits in `number-hive-complete/docs/game/hiq-and-challenge-score-design.md`. |
+| The Rival ladder (Bumble = its first rung) | `Rival` / `RIVALS` | `number-hive-newvis/src/ui/RivalData.ts` — `RIVALS: Rival[]` array, first entry `id: 'bumble', name: 'Bumble'`, "Index 0 (Bumble) is always unlocked". Selector UI: `src/ui/RivalSelector.ts`, `RivalCard.ts`. |
+| Challenge / Challenge Score | `Challenge` / `ChallengeScore` | `number-hive-newvis/src/challenge/ChallengeClient.ts` (`createChallenge`/`getChallenge`/`submitAttempt`, backend `backend/src/routes/challenges.js`); score formula in `src/scoring/ChallengeScore.ts` and `src/scoring/ChallengeScoreProfile.ts` — a distinct, per-match/per-seed score from Altitude/HIQ. |
+| Live Play (an asynchronous human-vs-human match) | async PvP / `MatchClient` | `number-hive-newvis/src/pvp/MatchClient.ts` — explicit "(Live Play)" labels in the header comment and at `joinMatch`/`listMatches`. |
+| Play-Me link (a standing invite link) | "standing link" / `StandingLinkClient` | `number-hive-newvis/src/links/StandingLinkClient.ts` — "the standing Play-Me link + QR flow (CHG-3763, REQ-008)"; backend `backend/src/routes/links.js`. |
+| Roster | `Connections` / `ConnectionsClient` | `number-hive-newvis/src/links/ConnectionsClient.ts` — "the known-opponents roster"; backend `backend/src/routes/connections.js`, `backend/src/lib/connectionStats.js`. No equivalent concept in `number-hive-complete`. |
+| Hive, and Hive.code (the join code) | `Hive` model, `code` field | `number-hive-complete/backend/src/database/models/hive.ts` — class `Hive`, unique-indexed `code` field, used for student join-by-code. GraphQL: `backend/src/graphql/hive/join-hive/join-hive.service.ts`. |
+| Journey (curriculum progression) | `Journey` model | `number-hive-complete/backend/src/database/models/journey.ts` — class `Journey`, `currentStage`/`EStageId`. Related: `backend/src/constants/journey-type.ts`, `backend/src/graphql/journey/journey.resolver.ts`. |
 
 ## The infrastructure, in one diagram
 
@@ -83,9 +101,9 @@ flowchart TB
         Temporal["numberhive-temporal-production\n+ managed Postgres"]
         GameFE["numberhive-game-production-frontend\ngame.numberhive.app"]
         GameBE["numberhive-game-production-backend\ngame-api.numberhive.app"]
-        AdminSvc["number-hive-admin (planned)\nadmin.numberhive.org"]
+        AdminSvc["number-hive-admin\n(Render: deployed, branch main,\nauto-deploy on — confirmed via Render API)\nreachable only at its .onrender.com URL"]
         AdminDB[("number-hive-admin-db\nmanaged Postgres + fg_events")]
-        MongoAtlas[("MongoDB\nprimary app DB — cluster identity\nunconfirmed, see open-items.md #4")]
+        MongoAtlas[("MongoDB Atlas\nprimary app DB — confirmed Atlas\n(mongodb+srv:// connection string)")]
 
         CompleteFE --> CompleteBE --> MongoAtlas
         CompleteBE --> Temporal
@@ -94,7 +112,9 @@ flowchart TB
     end
 
     subgraph RenderStaging["Render.com — Staging"]
-        StagingNote["numberhive-*-staging services (complete + newvis)\nPLUS a second candidate: staging-local.numberhive.org\n(personally-hosted, developer-provided infrastructure) — which one is canonical is\nunconfirmed, see open-items.md #3"]
+        GameStaging["numberhive-game-staging-frontend/-backend\nbranch staging, NOT suspended — live today\n(confirmed via Render API)"]
+        CompleteStaging["numberhive-*-staging (complete)\nbranch staging, SUSPENDED\n(confirmed via Render API — two generations,\nboth suspended)"]
+        StagingLocalNote["staging-local.numberhive.org\n(personally-hosted, developer-provided\ninfrastructure) — retired at handover.\nFrom 1 Oct, complete's staging is Render's\n(currently suspended — needs resuming)"]
     end
 
     subgraph Legacy["GCP / GKE / Pulumi — abandoned 2026-07-27"]
@@ -112,17 +132,18 @@ flowchart TB
     AppDomain --> CompleteFE
     AppDomain --> GameFE
     AppDomain --> WP
-    OrgDomain --> AdminSvc
+    OrgDomain -. "admin.numberhive.org DNS not wired to\nRender — resolves to a parked GoDaddy IP\n(199.192.24.221, expired TLS cert)" .-> AdminSvc
 
     GKE -. "no longer deployed to\n(config still on disk in\nnumber-hive-complete/backend/iac/)" .-> CompleteBE
     FirebaseHosting -. "superseded by Render\nfor hosting" .-> CompleteFE
 ```
 
-**Solid lines are live today. Dotted lines are dead/superseded paths** — the opposite emphasis
-from [`platform-overview.md`](../architecture/platform-overview.md)'s diagram (there, dotted means "designed but not yet built"; here,
-dotted means "used to be true, isn't the deploy path anymore"). The two grey boxes in
-`Legacy` are exactly [`open-items.md`](open-items.md) #1 and #2 — nobody has confirmed they're actually turned
-off, only that nothing deploys to them anymore.
+**Solid lines are live today. Dotted lines are dead/superseded or not-yet-wired paths** — the
+opposite emphasis from [`platform-overview.md`](../architecture/platform-overview.md)'s diagram (there, dotted means "designed but not yet
+built"; here, dotted means "used to be true, isn't the deploy path anymore" — or, for
+`OrgDomain -> AdminSvc`, "the service exists and deploys, but this specific DNS path to it
+doesn't work yet"). The two grey boxes in `Legacy` are exactly [`open-items.md`](open-items.md) #1 and #2 — nobody has
+confirmed they're actually turned off, only that nothing deploys to them anymore.
 
 ---
 

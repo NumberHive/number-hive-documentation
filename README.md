@@ -24,8 +24,8 @@ If it affects more than one repo, or needs to stay consistent across repos, it b
 NumberHive currently includes (and will continue to grow):
 
 - **Marketing site** (`numberhive.app` / `www.numberhive.app`) — WordPress, live today
-- **Educational game** — the learning-focused product experience
-- **Public game** — the public-facing game experience
+- **Number Hive Education** (`number-hive-complete`) — the paid, learning-focused school product
+- **Number Hive Arcade** (`number-hive-newvis`) — the free, public-facing game experience
 - **Administrative facilities** *(upcoming)* — internal/admin tooling for managing the platform; proposed as its own service, `number-hive-admin` (see ADR-005 in `number-hive-complete`, referenced from `architecture/subdomain-map.md` and `architecture/system-overview.md`)
 
 Each of these is expected to be served from its own subdomain under the NumberHive domain, while sharing underlying data, architecture, and processes. Convention (agreed 2026-07-24, see `architecture/subdomain-map.md`): customer-facing properties live on `.app`, NH-internal/staff properties live on `.org`. Other supporting and prototype repositories exist alongside these in the [NumberHive GitHub org](https://github.com/NumberHive) — this document will be expanded to map out which are active production services, which are prototypes, and how each one fits into the whole as that picture is confirmed.

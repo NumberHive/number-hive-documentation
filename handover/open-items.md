@@ -60,33 +60,38 @@ deploys pointing at them, decommission. Same class of question as #1, smaller li
 
 ## High — affects production data integrity or handover completeness
 
-### 3. Staging environment ambiguity — Render staging vs. a personally-hosted `staging-local`
+### 3. Staging environment — resolved 2026-08-31; one action item remains
 
-**What's known:** [`environment-urls.md`](../architecture/environment-urls.md) §2 documents two candidate staging environments for
-`number-hive-complete` — Render's `numberhive-*-staging` services, and a self-hosted Docker
-Compose setup (personally hosted, developer-provided infrastructure) at `staging-local.numberhive.org`. Different docs
-call different ones canonical; neither has been confirmed live via a direct check in this
-pass.
+**Resolved:** [`environment-urls.md`](../architecture/environment-urls.md) §2 used to document two candidate staging
+environments for `number-hive-complete` — Render's `numberhive-*-staging` services, and a
+self-hosted Docker Compose setup at `staging-local.numberhive.org` — with different docs
+calling different ones canonical. Queried directly via the Render API 2026-08-31: both
+generations of the Render staging services still exist (not deleted), but are **suspended**.
+`staging-local.numberhive.org` is developer-provided infrastructure, retired at handover —
+not a substitute. Every document now agrees: the company's staging from 1 Oct is whichever
+Render staging service set gets un-suspended, not `staging-local`.
 
-**Next step:** hit both URLs, confirm which (if either, or both) is actually serving traffic
-today, and update [`environment-urls.md`](../architecture/environment-urls.md) with a definitive answer instead of "needs a live
-check."
+**Next step (the actual remaining action):** un-suspend one of the two Render staging service
+generations for `number-hive-complete` (`numberhive-frontend-staging`/`-backend-staging`/
+`-temporal-staging` + pg) before staging is usable again. `number-hive-newvis`'s staging
+(`staging-game.numberhive.app`/`staging-game-api.numberhive.app`) needs no action — it's
+already live, not suspended.
 
 **Owner:** David, early — this affects where he tests things before his first deploy.
 
 ### 4. MongoDB production credential — confirm it's not the old demo credential
 
-**What's known:** the production MongoDB connection string on record uses an `nh-demo` user
-(`mongodb+srv://nh-demo:...@cluster0...`) — this reads as a shared/demo cluster credential,
-not a dedicated production one. Mailchimp's API key follows the identical
+**What's known:** the production MongoDB connection string on record uses a demo-named user
+(`mongodb+srv://<demo-named-user>:...@cluster0...`) — this reads as a shared/demo cluster
+credential, not a dedicated production one. Mailchimp's API key follows the identical
 "demo"-named pattern.
 
 **What's not known:** whether production actually runs on a differently-named, dedicated
-Atlas cluster/credential, or whether `nh-demo` genuinely is what's in `backend/.env.prod`
-today.
+Atlas cluster/credential, or whether the demo-named user genuinely is what's in
+`backend/.env.prod` today.
 
 **Next step:** check `backend/.env.prod`'s actual `mongodb_url` against what's in Atlas. If it
-is still `nh-demo` or similarly shared/broad, rotate to a dedicated production credential —
+is still the demo-named user or similarly shared/broad, rotate to a dedicated production credential —
 worth doing rather than inheriting a demo-named credential indefinitely.
 
 **Owner:** David, once he has Atlas access — credential hygiene, worth an early look but not

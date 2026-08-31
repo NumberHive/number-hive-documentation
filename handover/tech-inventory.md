@@ -51,10 +51,10 @@ since the monorepo merge) but nothing deploys through it. **Whether the GCP proj
 |---|---|---|---|
 | `numberhive-frontend-production` / `-backend-production` | `number-hive-complete` | Production | `play.numberhive.org` / `backend.numberhive.app` |
 | `numberhive-temporal-production` + `numberhive-temporal-pg-production` | `number-hive-complete` | Production | Temporal workflow engine — **still live**, just moved from the old Pulumi/K8s deployment to a Render private service + managed Postgres. Used for game timeouts/timed events. |
-| `numberhive-frontend-staging` / `-backend-staging` / `-temporal-staging` + pg | `number-hive-complete` | Staging | Staging status genuinely unresolved — see `environment-urls.md` §2, there's also a parallel `staging-local.numberhive.org` (personally-hosted Docker Compose) that some docs call canonical and others call decommissioned. **Needs a live check**, not resolvable from source alone. |
+| `numberhive-frontend-staging` / `-backend-staging` / `-temporal-staging` + pg | `number-hive-complete` | Staging | **Resolved 2026-08-31, queried directly via the Render API**: both generations of these staging services exist (not deleted) but are **suspended**. `staging-local.numberhive.org` (personally-hosted Docker Compose) is developer-provided infrastructure, retired at handover — it is not a substitute. Company staging from 1 Oct is whichever of these Render service sets gets un-suspended; see `environment-urls.md` §2 and `open-items.md` #3. |
 | `numberhive-game-production-frontend` / `-backend` | `number-hive-newvis` | Production | `game.numberhive.app` / `game-api.numberhive.app` — confirmed live + smoke-tested 2026-07-26 |
-| `numberhive-staging-frontend` / `-backend` | `number-hive-newvis` | Staging | `staging-game.numberhive.app` / `staging-game-api.numberhive.app` |
-| `number-hive-admin` (single service) | `number-hive-admin` | Production (planned) | `admin.numberhive.org` — target domain, **not yet confirmed live**; this repo is still early (only Google OAuth sign-in + an events mirror shipped so far) |
+| `numberhive-staging-frontend` / `-backend` | `number-hive-newvis` | Staging | `staging-game.numberhive.app` / `staging-game-api.numberhive.app` — confirmed live, not suspended, via the Render API 2026-08-31 |
+| `number-hive-admin` (single service) | `number-hive-admin` | Production | Deployed and running on Render (branch `main`, auto-deploy on, not suspended — confirmed via the Render API 2026-08-31), reachable at `https://number-hive-admin.onrender.com`. **`admin.numberhive.org` itself is not wired to it** — that hostname resolves to a parked GoDaddy IP (`199.192.24.221`) with an expired TLS certificate, confirmed independently via `dig`/`curl` the same day. This repo is still early (only Google OAuth sign-in, RBAC/access-control, an audit log, entitlement-push scaffolding, and an events mirror shipped so far). |
 | `number-hive-admin-db` | `number-hive-admin` | — | Managed Postgres, also backs the events mirror (`fg_events` table) migrated off ClickHouse — see `environment-urls.md` §4 |
 | `audit-log-purge` | `number-hive-admin` | — | Render cron job |
 
@@ -73,7 +73,7 @@ the ground truth for "is X actually live" that no repo's source code can answer 
 | Postgres (`number-hive-admin-db`) | Admin app data + `fg_events` mirror table | Render managed Postgres |
 
 **Flagged for rotation:** the MongoDB connection string on record uses a demo-style credential
-(`nh-demo:[REDACTED]@cluster0...`) — this looks like a shared/demo cluster, not a dedicated
+(a demo-named user on `cluster0...`) — this looks like a shared/demo cluster, not a dedicated
 production one. Worth confirming whether the real production Mongo connection is a dedicated
 cluster with its own credentials, or genuinely this one — see [`open-items.md`](open-items.md)
 for the recommended next step.

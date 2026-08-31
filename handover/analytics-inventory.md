@@ -189,7 +189,7 @@ stages exist consistently — noted as an existing tool, not a recommendation to
 
 ### B.3 ADR-003's proposed acquisition tracking — implemented differently than specified
 
-[`docs/adr/003-migration-safety.md`](../../number-hive-complete/docs/adr/003-migration-safety.md)'s
+[`docs/adr/003-migration-safety.md`](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/003-migration-safety.md)'s
 "Migration sequence — school product correlation" section proposes a nested
 `teacher.acquisition = {source, free_game_ref, referral_url, signup_date}` object, populated by
 capturing a `?ref=` query parameter at signup.

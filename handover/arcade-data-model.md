@@ -208,7 +208,7 @@ redemption waits indefinitely for a concurrency slot to free up), not an omissio
 
 ## 3. The ADR-003 storage contract, as it applies to this database
 
-[`number-hive-complete/docs/adr/003-migration-safety.md`](../../number-hive-complete/docs/adr/003-migration-safety.md)
+[`number-hive-complete/docs/adr/003-migration-safety.md`](https://github.com/NumberHive/number-hive-complete/blob/main/docs/adr/003-migration-safety.md)
 is the cross-repo migration-safety ADR (see
 [`../architecture/system-overview.md`](../architecture/system-overview.md) for which ADRs govern
 which repo boundaries). It is not just a paper policy for the Arcade side — **the current

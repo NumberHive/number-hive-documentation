@@ -1,7 +1,7 @@
-# CTO Handover — NumberHive Ecosystem
+# Incoming Technical Lead Handover — NumberHive Ecosystem
 
-**Purpose:** everything a new CTO (David) needs to pick up technical ownership of NumberHive
-from James. Written 2026-08-28, cross-checked against the live repos rather than transcribed
+**Purpose:** everything a new incoming technical lead (David) needs to pick up technical
+ownership of NumberHive from James. Written 2026-08-28, cross-checked against the live repos rather than transcribed
 from memory or old docs — see the provenance notes throughout.
 
 **Status:** first full pass. The three docs in this folder plus the existing `architecture/`

@@ -7,7 +7,7 @@ document leans on heavily for the infra rows).
 
 **On credentials:** this repo is plaintext, git-tracked, and kept indefinitely in history —
 the wrong place for secrets even briefly. Every place a password/key would go is marked
-`[see Google Doc: <item>]`. Those three(ish) items remain in James's Google Doc; this file is
+`[held in the Company's credential store; handed over at the session]`. This file is
 the structural map of *what* exists and *where*, not the secrets themselves.
 
 ---
@@ -16,8 +16,8 @@ the structural map of *what* exists and *where*, not the secrets themselves.
 
 | Domain | Registrar | DNS | Next renews | Cost |
 |---|---|---|---|---|
-| numberhive.org | GoDaddy | GoDaddy | 6 April 2026 | £19.82/yr |
-| numberhive.app | GoDaddy | GoDaddy | 6 April 2026 | £20.86/yr |
+| numberhive.org | GoDaddy | GoDaddy | 6 April 2027 (confirmed live via RDAP, 2026-08-31) | £19.82/yr |
+| numberhive.app | GoDaddy | GoDaddy | 6 April 2027 (confirmed live via RDAP, 2026-08-31) | £20.86/yr |
 
 **DNS access:** [sso.godaddy.com/access](https://sso.godaddy.com/access). Currently informally
 delegated (James → account holder "Chris", authority passed via "Fletch") — that's simply how
@@ -158,7 +158,7 @@ confirming whether the Firebase Hosting projects (`number-hive-staging`, `number
 exist and are billing, same class of question as the GKE cluster. Added to [`open-items.md`](open-items.md).
 
 **Not independently re-verified this pass:**
-- Apple App Store (App ID `1636921061`, dev account `james@puddicombe.com`) and Google Play
+- Apple App Store (App ID `1636921061`, dev account — developer account, James's, to transfer) and Google Play
   Store (package `com.numberhive`) listings — no evidence found of active mobile CI/CD in either
   live repo, consistent with "mobile builds not maintained." These listings likely still exist
   and may still be live to end users even though nobody is building new releases for them —
@@ -167,13 +167,54 @@ exist and are billing, same class of question as the GKE cluster. Added to [`ope
 - Termly (privacy policy/ToS hosting)
 - HetrixTools (platform monitoring)
 
+### `number-hive-newvis` and `number-hive-admin` third parties (not covered above — that section is `number-hive-complete` only)
+
+| Service | Role | Repo | Evidence |
+|---|---|---|---|
+| **Google OAuth** (separate client from `number-hive-complete`'s) | Account auth — Authorization Code flow (not the ID-token popup flow) | `number-hive-newvis` | `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` in `backend/.env.example`; required at boot (`process.exit(1)` if missing) — no disabled mode, unlike the optional VAPID push below |
+| **Google OAuth** (a third, separate dev client again — never shared across repos) | Staff sign-in, gated to `ALLOWED_HD_DOMAIN=numberhive.app` via the verified ID token's `hd` claim | `number-hive-admin` | `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` in `.env.example` |
+| **Web Push (VAPID)** | Optional push notifications — silently disabled if keys absent | `number-hive-newvis` | `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` in `backend/.env.example` |
+| **OpenRouter** (admin's AI provider) | LLM backing the ANALYSER feature's natural-language-to-query translation (CHG-4142; moved off the direct Anthropic API onto OpenRouter's unified API as of CHG-4172) | `number-hive-admin` | `OPENROUTER_API_KEY`/`OPENROUTER_MODEL` in `.env.example`; client at `server/src/analyser/anthropicClient.ts` |
+| **Tailscale** | Developer-provided remote-access networking — used for dev-box HTTPS (`tailscale cert <hostname>`) so the Google OAuth redirect (which requires HTTPS) works against a real hostname in dev | `number-hive-admin` (dev only) | `TLS_CERT_PATH`/`TLS_KEY_PATH`/`VITE_DEV_ALLOWED_HOST` in `.env.example`; also referenced as the dev-box networking layer in `environment-urls.md` — **developer-provided infrastructure, retired at handover**, not a company-held Tailscale account |
+
+### Per-service environment variables (names and purposes only — no values)
+
+**`number-hive-newvis/backend/.env.example`:**
+
+| Variable | Purpose |
+|---|---|
+| `MONGODB_URI`, `MONGODB_DB_NAME` | Primary database connection |
+| `PORT`, `FRONTEND_ORIGIN`, `APP_ORIGIN`, `API_ORIGIN` | Networking/origin config |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push (optional) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Account auth (required, no disabled mode) |
+| `JWT_SECRET` | Signs the 30-day session JWT |
+| `OAUTH_STATE_SECRET` | Signs the OAuth CSRF `state` token — deliberately separate from `JWT_SECRET` |
+| `EMAIL_ENCRYPTION_KEY` | AES-256-GCM key encrypting account emails at rest + HMAC pepper for the lookup-only email hash |
+| `SLOW_REQUEST_THRESHOLD_MS` | Ops logging — flags slow requests (default 2000ms) |
+| `PROGRESSION_RACE_SAMPLE_RATE` | Diagnostic sampling rate for a specific race-condition detector (CHG-4017) |
+| `NEWVIS_EVENTS_PUSH_URL`, `NEWVIS_EVENTS_PUSH_SECRET`, `NEWVIS_EVENTS_PUSH_INTERVAL_MS`, `NEWVIS_EVENTS_PUSH_BATCH_SIZE` | Outbound analytics push to `number-hive-admin` (CHG-3977) — silently no-ops if unset |
+
+**`number-hive-admin/.env.example`:**
+
+| Variable | Purpose |
+|---|---|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Staff OAuth sign-in (dev client) |
+| `ALLOWED_HD_DOMAIN` | Server-side staff-domain gate on the verified ID token |
+| `SESSION_SECRET` | Session cookie signing — rotating invalidates all sessions |
+| `DATABASE_URL` | This service's own Postgres — also backs `fg_events` (formerly ClickHouse) |
+| `ENTITLEMENT_PUSH_SECRET`, `ENTITLEMENT_PUSH_TARGET_URL` | Outbound entitlement push to `number-hive-complete` (ADR-005) |
+| `NEWVIS_EVENTS_PUSH_SECRET` | Inbound credential `number-hive-newvis`'s push worker authenticates with |
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | ANALYSER's LLM provider |
+| `PUBLIC_ORIGIN`, `SERVER_PORT`, `CLIENT_PORT` | Networking/origin config |
+| `TLS_CERT_PATH`, `TLS_KEY_PATH`, `VITE_DEV_ALLOWED_HOST` | Dev-only HTTPS/Host-allowlist for the Vite dev server (developer-provided Tailscale infra, dev-only) |
+
 ---
 
 ## 5. Cost map (as last recorded — needs a fresh pull, not re-verified this pass)
 
 | Item | Provider | Frequency | Amount |
 |---|---|---|---|
-| Admin workspace | Google | Monthly | ≈ A$159.67 |
+| Admin workspace | Google | Monthly | ≈ 159.67 (currency as recorded — likely AUD, not independently re-verified this pass, **currency unverified**) |
 | Domain registration ×2 | GoDaddy | Annual | £19.82 + £20.86 |
 | Front-end (**historically Firebase — see correction above, may now be Render**) | Google Firebase | Monthly | £135 (stale figure) |
 | Back-end (**historically Google Cloud — see GKE correction, may be partly dead spend**) | Google Cloud | Monthly | £61 (stale figure — could include the unconfirmed-torn-down GKE cluster) |
@@ -198,9 +239,9 @@ purpose.
 
 | System | What's there | Access |
 |---|---|---|
-| Pulumi (stacks: `gke:general`, `kubernetes:staging`, `kubernetes:production`) | State for the now-abandoned GKE path; state bucket `gs://number-hive-pulumi` | `[see Google Doc: Pulumi]` — **relevance now depends on whether the GCP infra is being torn down or kept**; see [`open-items.md`](open-items.md) |
-| WordPress admin (`www.numberhive.app/login`) | Marketing site CMS | User `jamesp@numberhive.app`; `[see Google Doc: WordPress]` |
-| MongoDB (`nh-demo` user — flagged for rotation) | Looks like a demo/shared credential, not confirmed as the real production one | `[see Google Doc: MongoDB]` — flagged in [`open-items.md`](open-items.md) for David to confirm/rotate once he has Atlas access |
+| Pulumi (stacks: `gke:general`, `kubernetes:staging`, `kubernetes:production`) | State for the now-abandoned GKE path; state bucket `gs://number-hive-pulumi` | held in the Company's credential store; handed over at the session — **relevance now depends on whether the GCP infra is being torn down or kept**; see [`open-items.md`](open-items.md) |
+| WordPress admin (`www.numberhive.app/login`) | Marketing site CMS | User `jamesp@numberhive.app`; held in the Company's credential store; handed over at the session |
+| MongoDB (a demo-named user — flagged for rotation) | Looks like a demo/shared credential, not confirmed as the real production one | held in the Company's credential store; handed over at the session — flagged in [`open-items.md`](open-items.md) for the incoming technical lead to confirm/rotate once he has Atlas access |
 | Mailchimp API key (`NH-demo` key — same pattern) | Same "demo"-named pattern as the Mongo credential above | Held in `backend/.env.prod`, not reproduced here |
 | SendGrid API key | Transactional email | Held in `backend/.env.prod` |
 | Render dashboard | All live hosting/deploy for `complete`, `newvis`, `admin` | Needs explicit access grant to David — this is now the single most operationally important credential in the whole system |
@@ -353,5 +394,5 @@ they're visible, and mirrored as decisions/actions in [`open-items.md`](open-ite
 *Compiled 2026-08-28, cross-checked against `number-hive-complete`, `number-hive-newvis`, and
 `number-hive-admin`'s live `package.json`/`.env.example`/`render.yaml` files, and against
 [`environment-urls.md`](../architecture/environment-urls.md) (compiled 2026-07-27 by the same
-method). Original source: James's Google Doc infrastructure inventory, passwords removed before
-being shared for this reconciliation.*
+method). Original source: the Company's infrastructure inventory, held in its credential store
+and handed over at the session; passwords removed before being used for this reconciliation.*

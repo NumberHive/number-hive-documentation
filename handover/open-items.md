@@ -98,7 +98,7 @@ urgent enough to block anything.
 `number-hive-complete` monorepo merge on 2026-03-14/16 and haven't been pushed to since.
 Neither is marked `archived` on GitHub.
 
-**Why it matters:** a new CTO scanning the org's repo list has no signal that these are
+**Why it matters:** a new incoming technical lead scanning the org's repo list has no signal that these are
 dead — he could waste time investigating them, or worse, someone could accidentally deploy
 from a fossil branch believing it's current.
 
@@ -397,9 +397,9 @@ review at some point post-handover — not something this technical reconciliati
 
 ---
 
-*Compiled 2026-08-28 alongside [`README.md`](README.md) and [`tech-inventory.md`](tech-inventory.md), as part of the CTO
-handover package. Re-prioritize freely — the ranking here is a starting judgement, not a
+*Compiled 2026-08-28 alongside [`README.md`](README.md) and [`tech-inventory.md`](tech-inventory.md), as part of the
+incoming technical lead's handover package. Re-prioritize freely — the ranking here is a starting judgement, not a
 fixed sequence. Items 15–21 added 2026-08-31 while extending `tech-inventory.md` ahead of the
-Dave handover session — each checked directly against the live repos rather than transcribed
+handover session — each checked directly against the live repos rather than transcribed
 from working notes; three (16, 17, 20) corrected an earlier assumption once the code was
 actually read.*

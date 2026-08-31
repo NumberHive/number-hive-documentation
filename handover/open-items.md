@@ -5,8 +5,7 @@ the live repos that needs a decision, a verification, or an action — ranked by
 hurt if left undone, not by how it happened to come up. Some of these are pre-existing gaps in
 the original inventory (backups, security policy, incident response were never documented);
 some are things this reconciliation pass found (a cloud cluster that may still be running and
-billing with nothing pointing at it; two zombie repos; a security exposure unrelated to the
-deed work).
+billing with nothing pointing at it; two zombie repos).
 
 Each item states what's known, what's not, and a concrete next step — not just "investigate".
 
@@ -395,20 +394,6 @@ and data-deletion workflows remain undocumented.
 review at some point post-handover — not something this technical reconciliation can answer.
 
 **Owner:** David + legal/compliance, medium-term.
-
----
-
-## Already in motion — not new, listed for completeness only
-
-These security items surfaced during a separate incorporation/security review (ahead of
-the NumberHive/Indigo Tide assignment deed) and are **James's action items already, not part
-of this handover's open items** — listed here purely so David has the full picture and
-doesn't rediscover them independently:
-
-- A GitHub PAT embedded in `number-hive-complete`'s local `.git/config` remote URL (not
-  committed — James rotating).
-- `server/.env.tmp` in `number-hive-admin`'s git history (removed at tip, recoverable from
-  history — James rotating the credentials it contained).
 
 ---
 

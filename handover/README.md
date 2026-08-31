@@ -4,7 +4,7 @@
 ownership of NumberHive from James. Written 2026-08-28, cross-checked against the live repos rather than transcribed
 from memory or old docs — see the provenance notes throughout.
 
-**Status:** first full pass. The three docs in this folder plus the existing `architecture/`
+**Status:** first full pass. The docs in this folder plus the existing `architecture/`
 docs together are the handover package. [`open-items.md`](open-items.md) lists what still needs an answer or a
 decision before (or shortly after) handover completes — read that one even if you skim
 everything else.
@@ -23,6 +23,10 @@ everything else.
    (backups, security policy, incident response were never documented); some are things I
    found doing the reconciliation (a cloud cluster that may still be running and billing with
    nothing pointing at it; two zombie repos).
+4. **[`access-model.md`](access-model.md)** — who can do what, and how it's actually checked in
+   code, across all three systems. Includes two confirmed authorization gaps found while
+   compiling it (`remove-user-from-hive`, and a more severe one in the Journey resolvers) — both
+   also tracked in `open-items.md` (#22, #23).
 
 Then, for the actual system architecture (not infra/ops, but what the product *is* and how the
 pieces fit together), the existing docs in this repo are the canonical source and I haven't

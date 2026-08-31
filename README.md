@@ -82,6 +82,7 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 | `handover/README.md` | **CTO handover entry point** (James → David, 2026-08-28) — orientation, repo map, how build/deploy actually works, and the GKE/Pulumi correction. Links out to `tech-inventory.md`/`open-items.md` below and to the architecture docs above rather than duplicating them. |
 | `handover/tech-inventory.md` | Domains, hosting (Render — the real current answer, correcting the old GCP/GKE inventory), databases, third-party services, costs, and access, reconciled against what's actually deployed. Credentials are never inlined — `[see Google Doc: ...]` placeholders point at the (out-of-repo) source of truth. |
 | `handover/open-items.md` | Prioritized list of what needs a decision, verification, or action before/after handover — e.g. confirming the old GKE cluster and Firebase Hosting projects are actually torn down, not just unused. |
+| `handover/access-model.md` | Who can do what, and how it's actually checked in code, across all three systems — identity models, resolver/route-level auth, ownership/membership checks, and two confirmed authorization gaps found while compiling it (`remove-user-from-hive`, and a more severe one in the Journey resolvers) — cited to exact file paths and line numbers, cross-checked against the live code 2026-08-31. |
 
 ## Status
 

@@ -28,6 +28,28 @@ everything else.
    compiling it (`remove-user-from-hive`, and a more severe one in the Journey resolvers) — both
    also tracked in `open-items.md` (#22, #23).
 
+Beyond those four, the rest of this folder is product/domain-specific deep dives, written to
+answer specific questions raised in the run-up to handover rather than to be read start to
+finish:
+
+- **[`analytics-inventory.md`](analytics-inventory.md)** — what analytics/event tracking exists
+  for Arcade and Education, where it lives in code, and how it's currently accessed (or isn't).
+- **[`arcade-data-model.md`](arcade-data-model.md)** — Arcade's document lifecycles, TTL/index
+  behaviour, and how the cross-repo ADR-003 storage contract applies on that side; a companion to
+  `../architecture/database-schema-free-game.md`, not a replacement for it.
+- **[`async-arcade-architecture.md`](async-arcade-architecture.md)** — how an asynchronous
+  player-vs-player game in Arcade moves from invite to a resolved outcome: the concurrency cap,
+  the queue-on-cap invite flow, and "Your Turn" surfacing.
+- **[`launch-readiness-notes.md`](launch-readiness-notes.md)** — a factual, no-judgement map of
+  where in the code each item from the CEO's Launch Brief (25 and 31 August 2026) currently
+  stands.
+- **[`promotion-runbook.md`](promotion-runbook.md)** — the deploy/promotion pipeline for each of
+  the four repos (they're not uniform); flagged as pending a live walkthrough to confirm Render
+  dashboard settings actually match what's committed.
+- **[`security-remediation-status.md`](security-remediation-status.md)** — status of
+  `number-hive-complete`'s security remediation plan, phase by phase, cross-checked against
+  current code.
+
 Then, for the actual system architecture (not infra/ops, but what the product *is* and how the
 pieces fit together), the existing docs in this repo are the canonical source and I haven't
 duplicated them here:

@@ -79,10 +79,16 @@ Each of these is expected to be served from its own subdomain under the NumberHi
 
 | Document | What it covers |
 |---|---|
-| `handover/README.md` | **CTO handover entry point** (James → David, 2026-08-28) — orientation, repo map, how build/deploy actually works, and the GKE/Pulumi correction. Links out to `tech-inventory.md`/`open-items.md` below and to the architecture docs above rather than duplicating them. |
+| `handover/README.md` | **Incoming technical lead handover entry point** (James → David, 2026-08-28) — orientation, repo map, how build/deploy actually works, and the GKE/Pulumi correction. Links out to the other files in this section and to the architecture docs above rather than duplicating them. |
 | `handover/tech-inventory.md` | Domains, hosting (Render — the real current answer, correcting the old GCP/GKE inventory), databases, third-party services, costs, and access, reconciled against what's actually deployed. Credentials are never inlined — `[see Google Doc: ...]` placeholders point at the (out-of-repo) source of truth. |
 | `handover/open-items.md` | Prioritized list of what needs a decision, verification, or action before/after handover — e.g. confirming the old GKE cluster and Firebase Hosting projects are actually torn down, not just unused. |
 | `handover/access-model.md` | Who can do what, and how it's actually checked in code, across all three systems — identity models, resolver/route-level auth, ownership/membership checks, and two confirmed authorization gaps found while compiling it (`remove-user-from-hive`, and a more severe one in the Journey resolvers) — cited to exact file paths and line numbers, cross-checked against the live code 2026-08-31. |
+| `handover/analytics-inventory.md` | Analytics/event-tracking inventory for Arcade and Education — what's tracked, where it lives in code, and how it's currently accessed (or not) — answering the Launch Brief's funnel-list requests for both products. |
+| `handover/arcade-data-model.md` | Handover-oriented companion to `architecture/database-schema-free-game.md` — document lifecycles (state diagrams), TTL/index behaviour, and how the cross-repo ADR-003 storage contract applies on the Arcade side. |
+| `handover/async-arcade-architecture.md` | How an asynchronous player-vs-player game in Number Hive Arcade moves from invite to a resolved outcome — the concurrency cap, the queue-on-cap invite flow, guest-vs-account behaviour, and "Your Turn" surfacing. |
+| `handover/launch-readiness-notes.md` | Factual, no-judgement map of where in the code each "must do"/"must verify before launch" item from the CEO's Launch Brief (25 and 31 August 2026) currently stands — no estimates or readiness calls. |
+| `handover/promotion-runbook.md` | Per-repo deploy/promotion pipeline reference (branches, environments, what triggers what) for all four repos — explicitly not uniform across repos, and flagged as pending a live walkthrough to confirm Render dashboard settings actually match committed config. |
+| `handover/security-remediation-status.md` | Status of `number-hive-complete`'s security remediation plan (phases 1–3) cross-checked line-by-line against current code — includes two divergences resolved during this pass (the resolver auth-guard method count, and the frontend Dockerfile's Node-version jump). |
 
 ## Status
 
